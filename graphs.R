@@ -18,56 +18,42 @@ logit <- function(p) log(p/(1-p))
 
 inv_logit <- function(x) 1/(1+exp(-x))
 
-interpolate_mu_b_sim <- function(mu_b_weekly_points){
-    mu_b_daily <- approx(x = as.numeric(as.Date(all_weeks_until_election)), 
-                         y = mu_b_weekly_points, 
-                         xout = as.numeric(as.Date(all_t_until_election)), 
-                         rule = c(2,2))$y # R's linear interpolation function
-    return(mu_b_daily)
-}
 
-get_sim_series <- function(state_abbr_vec, sim){
-    d <- NULL
-    for (state in state_abbr_vec){
-        mu_a_filled <- c(mu_a[sim,], 
-                         rep(0, length(all_t_until_election) - length(all_t)))
-        d <- rbind(d,
-                   data.frame(t = all_t_until_election,
-                              state = state,
-                              p_sim = inv_logit(mu_a_filled + interpolate_mu_b_sim(mu_b[sim, , state]))))
-    }
-    return(d)
-}
-
-plot_score <- function(state_abbr_vec, show_nsim = NULL){
+plot_score <- function(state_abbr_vec, show_sim = FALSE){
     ncolumns <- min(5, length(state_abbr_vec))
     ordered_states <- state_abbr_vec[order(state_abbr_vec)]
     state_labels <- paste(ifelse(ordered_states != "--", state_name[ordered_states], "National Vote"), 
                           "\nPr(Clinton wins) =", 
                           round(pred[pred$state %in% ordered_states & pred$t == election_day,]$clinton_win, 2))
     names(state_labels) <- ordered_states
-    if (!is.null(show_nsim)){
+    if (show_sim == TRUE){
         g <- ggplot(data = pred[pred$state %in% state_abbr_vec,])
-        for (i in sample(1:nrow(mu_a), show_nsim, replace = FALSE)){
-            g <- g + geom_line(data = get_sim_series(state_abbr_vec, i), 
-                               aes(x = t, y = 100*p_sim), 
+        for (i in 1:100){
+            g <- g + geom_line(data = data.frame(p = as.vector(p_subset[i,,state_abbr_vec]), 
+                                                 t = rep(dates, length(state_abbr_vec)), 
+                                                 state = rep(state_abbr_vec, each = length(dates))), 
+                               aes(x = t, y = 100*p), 
                                col = "darkgrey", alpha = .1)
         }
     }else{
         g <- ggplot(data = pred[pred$state %in% state_abbr_vec,])
     }
     g <- g +
-        geom_line(aes(x = t, y = 100*p, linetype = ifelse(t < max(all_t), "dotted",  "solid")), color = "blue") +
-        geom_ribbon(aes(x = t, ymin = 100*low, ymax = 100*high), 
-                    alpha = 0.2, fill = "blue") + 
+        # geom_line(aes(x = t, y = 100*p, linetype = ifelse(t < max(all_t), "dotted",  "solid")), color = "blue") +
         geom_point(data = df[df$state %in% state_abbr_vec,],
                    aes(x = t, y = 100*p_clinton),
                    color = "blue", size = 1/min(2, length(state_abbr_vec))) +
+        geom_ribbon(aes(x = t, ymin = 100*low, ymax = 100*high), 
+                    alpha = 0.2, fill = "blue") + 
         geom_vline(xintercept = as.numeric(election_day)) +
         geom_hline(yintercept = 50) +
         geom_hline(data = data.frame(state = state_abbr_vec, prior = 100*inv_logit(mu_b_prior[state_abbr_vec])), 
                    color = "black", linetype = "dotted",
                    aes(yintercept=prior)) +
+        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t <= max(all_t),], 
+                  aes(x = t, y = 100*p), color = "blue") +
+        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t >= max(all_t),], 
+                  aes(x = t, y = 100*p), color = "blue", linetype = "dotted") +
         ylab("Clinton Vote in %") +
         xlab("") + scale_linetype_discrete(guide=FALSE) +
         facet_wrap(~ state, ncol = ncolumns, labeller = as_labeller(state_labels, multi_line = TRUE)) +
@@ -84,15 +70,22 @@ plot_score <- function(state_abbr_vec, show_nsim = NULL){
 
 # @knitr plot_national
 
-plot_score("--")
+plot_score("--", show_sim = TRUE)
+# plot_score("--")
 
 # @knitr plot_states
 
-plot_score(all_polled_states[2:11], show_nsim = 100)
-plot_score(all_polled_states[12:21], show_nsim = 100)
-plot_score(all_polled_states[22:31], show_nsim = 100)
-plot_score(all_polled_states[32:41], show_nsim = 100)
-plot_score(all_polled_states[42:51], show_nsim = 100)
+plot_score(all_polled_states[2:11],  show_sim = TRUE)
+plot_score(all_polled_states[12:21], show_sim = TRUE)
+plot_score(all_polled_states[22:31], show_sim = TRUE)
+plot_score(all_polled_states[32:41], show_sim = TRUE)
+plot_score(all_polled_states[42:51], show_sim = TRUE)
+
+# plot_score(all_polled_states[2:11])
+# plot_score(all_polled_states[12:21])
+# plot_score(all_polled_states[22:31])
+# plot_score(all_polled_states[32:41])
+# plot_score(all_polled_states[42:51])
 
 
 ###############################
@@ -120,11 +113,11 @@ dp[,2:4] <- round(dp[,2:4], 1)
 
 # @knitr polls_most_pro_clinton
 
-dp %>% arrange(-house_effect_P50) %>% head %>% kable(., col.names = c("Poll Origin", "Median", "P95", "P05"))
+dp %>% arrange(-house_effect_P50)  %>% filter(house_effect_P50 >= 1) %>% head(., n=10) %>% kable(., col.names = c("Poll Origin", "Median", "P95", "P05"))
 
 # @knitr polls_most_pro_trump
 
-dp %>% arrange(house_effect_P50) %>% head %>% kable(., col.names = c("Poll Origin", "Median", "P95", "P05"))
+dp %>% arrange(house_effect_P50) %>% filter(house_effect_P50 <= -1) %>% head(., n=10) %>% kable(., col.names = c("Poll Origin", "Median", "P95", "P05"))
 
 #########
 # alpha #
@@ -133,7 +126,7 @@ dp %>% arrange(house_effect_P50) %>% head %>% kable(., col.names = c("Poll Origi
 # @knitr alpha
 
 ggplot(data.frame(alpha = 100*(inv_logit(alpha + logit(pred$p[pred$state == "--" & pred$t == all_t[length(all_t)]]))-pred$p[pred$state == "--" & pred$t == all_t[length(all_t)]]) )) + 
-    geom_histogram(aes(x = alpha), bins = 50) + 
+    geom_histogram(aes(x = alpha), bins = 50, fill = "grey", color = "darkgrey") + 
     xlab("Estimated National/States Discrepancy of Clinton Scores (in % Points)") +
     ylab("Number of simulations")
 
@@ -234,3 +227,58 @@ m <- rmvnorm(1e4, mu_b_prior[-1], sigma_mu_b_end)
 rho <- apply(m, 1, function(x) cor(inv_logit(mu_b_prior[-1]), inv_logit(x)))
 m0 <- rmvnorm(1e4, mu_b_prior[-1], cov_matrix(length(mu_b_prior[-1]),sigma_mu_b_end[1,1], 0))
 rho0 <- apply(m0, 1, function(x) cor(inv_logit(mu_b_prior[-1]), inv_logit(x)))
+
+# @knitr TX-VA-example
+
+correlated_prior_va_tx <- inv_logit(rmvnorm(1e4, mu_b_prior[-1], sigma_mu_b_end)[,c("VA","TX")])
+uncorrelated_prior_va_tx <- inv_logit(rmvnorm(1e4, mu_b_prior[-1], cov_matrix(length(mu_b_prior[-1]), sigma_mu_b_end[1,1], 0))[,c("VA","TX")])
+    
+ex_df <- rbind(data.frame(va = uncorrelated_prior_va_tx[,"VA"],
+                          tx = uncorrelated_prior_va_tx[,"TX"],
+                          type = "Independent Priors"),    
+               data.frame(va = correlated_prior_va_tx[,"VA"],
+                          tx = correlated_prior_va_tx[,"TX"],
+                          type = "Correlated Priors") #,
+               # data.frame(va = inv_logit(mu_b[,length(all_weeks_until_election), "VA"]),
+               #          tx = inv_logit(mu_b[,length(all_weeks_until_election), "TX"]),
+               #          type = "Posterior")
+               )
+
+minmax <- c(min(ex_df$va, ex_df$tx), max(ex_df$va, ex_df$tx))
+
+ggplot(data = ex_df, aes(x=va, y=tx)) + 
+    geom_point(alpha = .1, size = .5) + 
+    geom_line(data = data.frame(x=minmax, y=minmax), aes(x=x, y=y), linetype = "dashed", color = "black") +
+    xlim(minmax) + 
+    ylim(minmax) + 
+    xlab("Clinton Score (Virginia)") + 
+    ylab("Clinton Score (Texas)") + 
+    facet_wrap(~ type)
+
+# @correlation_states_graph
+
+cor_df <- rbind(data.frame(r = rho0, type = rep("Independent Priors", length(rho0))),
+                data.frame(r = rho , type = rep("Correlated Priors",   length(rho )))) #,
+                # data.frame(r = apply(mu_b[,length(all_weeks_until_election),-1], 1, 
+                #                      function(vec) cor(inv_logit(vec), inv_logit(mu_b_prior[-1]))),
+                #                      type = rep("Posterior", nrow(mu_a))))
+
+prev_df <- data.frame(r = c(0.9822, 0.9431, 0.9762, 0.9563, 0.9297, 0.8959, 0.9347), 
+                      year = c("2012-2008", "2008-2004", "2004-2000", "2000-1996", "1996-1992", "1992-1988", "1988-1984"))
+
+ggplot(data = cor_df) + 
+    geom_histogram(aes(x = r, ..density..), bins = 50, color = "darkgrey", fill = "grey") + 
+    geom_point(data = prev_df, aes(y = 0, x = r), size = .75) + geom_text(data = prev_df, aes(y = 0, x = r, label = year), angle = 90, size = 2.5, hjust = "left", nudge_y = 3) +
+    facet_wrap(~ type) + 
+    xlab("Correlation between 2016 and 2012 state scores") + 
+    ylab("Density")
+
+# @knitr sigma_walk
+
+ggplot(data.frame(sigma = c(sigma_walk_a_past, 
+                            sigma_walk_b_past), 
+                  name = c(rep("sigma_a", nrow(mu_a)), 
+                           rep("sigma_b", nrow(mu_a))))) + 
+    geom_histogram(aes(x = sigma), bins = 50, fill = "grey", color = "darkgrey") + facet_grid(name ~ .) +
+    ylab("Number of simulations") +
+    xlab("Backward component: reverse random walk standard deviations")

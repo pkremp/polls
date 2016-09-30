@@ -51,8 +51,7 @@ knitr::kable(last_polls, col.names = c("End Date", "Source", "State", "% Clinton
 # National Vote 
 
 
-This graph shows the posterior median (blue line) and 90% credible interval (light grey area) of Hillary Clinton's share of the national vote, derived from the weighted average of latent state-by-state vote intentions (using the same state weights as in the 2012 presidential election). 
-
+This graph shows the posterior median (blue line) and 90% credible interval (light blue area) of Hillary Clinton's share of the national vote, derived from the weighted average of latent state-by-state vote intentions (using the same state weights as in the 2012 presidential election, adjusted for state adult population growth between 2011 and 2015). 
 $$\pi^{clinton}[t, US] = \sum_{s \in S} \omega_s \cdot \textrm{logit}^{-1} (\mu_a[t] + \mu_b[t, s])$$
 
 From today to November 8, Hillary Clinton's share of the national vote is predicted to shrink partially towards the Time for Change prior (shown with the dotted black line).
@@ -70,7 +69,7 @@ The following graphs show vote intention by state (with 100 draws from the poste
 
 $$\pi^{clinton}[t,s] = \textrm{logit}^{-1} (\mu_a[t] + \mu_b[t, s])$$
 
-As expected, credible intervals (light grey areas) are wider for states and periods in which few polls are available and when state polls disagree with each other.
+As expected, 90% credible intervals (light blue areas) are wider for states and periods in which few polls are available and when state polls disagree with each other.
 
 ```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 5}
 <<plot_states>>
@@ -120,8 +119,7 @@ Most pro-Trump polls:
 
 # Data 
 
-The `runmodel.R` script downloads `.csv` files from the [Princeton Election Consortium website](http://election.princeton.edu)
-(which are themselves compiled from the HuffPost Pollster API) before processing the data.
+The `runmodel.R` script downloads state polls from the [Princeton Election Consortium website](http://election.princeton.edu) and national polls from the [HuffPost Pollster wesbite](http://http://elections.huffingtonpost.com/pollster) before processing the data.
 
 The model ignores third-party candidates and undecided voters.
 I restrict each poll's sample to respondents declaring vote intentions for Clinton or Trump, so that $N = N^{clinton} + N^{trump}$.
@@ -130,8 +128,6 @@ When multiple polls are available by the same pollster, at the same date, and fo
 polls of likely voters rather than registered voters, and polls for which $N^{clinton} + N^{trump}$ is
 the smallest (assuming that these are poll questions in which respondents are given the option to choose a
 third-party candidate, rather than "pushy" questions in which respondents are only asked to choose between the two leading candidates -- these polls tend to be less favorable to Hillary Clinton).
-
-No polls are available for the following `r length(setdiff(all_states, all_polled_states[-1]))` states: `r  str_c(state_name[setdiff(all_states, all_polled_states[-1])], collapse = ", ")`. These states are left out of the model.
 
 # Model 
 
@@ -159,7 +155,7 @@ $$\textrm{logit} (\pi^{clinton}_i) = \mu_a[t_i] + \mu_b[t_i, s_i] + \mu_c[p_i] +
 
 What this model does is simply to decompose the log-odds of reported vote intentions towards Hillary Clinton $\pi^{clinton}_i$ into a national component, shared across all states ($\mu_a$), a state-specific component ($\mu_b$), a pollster house effect ($\mu_c$), and a measurement noise term ($u$)
 
-On the day of the last available poll $t_{last}$, the national swing component $\mu_a[t_{last}]$ is set to zero, so that the predicted share of the Clinton vote in state $s$ (net of pollster house effects) after that date and until election day $T$ is: 
+On the day of the last available poll $t_{last}$, the national component $\mu_a[t_{last}]$ is set to zero, so that the predicted share of the Clinton vote in state $s$ (net of pollster house effects and measurement noise) after that date and until election day $T$ is: 
 
 $$\pi^{clinton}_{ts} = \textrm{logit}^{-1} (\mu_b[t, s])$$
 
@@ -175,7 +171,7 @@ If poll $i$ is a national poll, I use the same multilevel approach (with random 
 
 $$\textrm{logit} (\pi^{clinton}_i) =  \textrm{logit}\left( \sum_{s \in \{1 \dots S\}} \omega_s \cdot \textrm{logit}^{-1} (\mu_a[t_i] + \mu_b^{weekly}[w_{t_i}, s_i]) \right) + \alpha + \mu_c[p_i] + u_i$$
 
-where $\omega_s$ represents the share of state $s$ in the total votes of the set of polled states $1 \dots S$ (based on 2012 turnout numbers). The $\alpha$ parameter corrects for possible discrepancies between the national vote and the weighted average of state polls. Possible sources of discrepancies may include: 
+where $\omega_s$ represents the share of state $s$ in the total votes of the set of polled states $1 \dots S$ (based on 2012 turnout numbers adjusted for adult population growth in each state between 2011 and 2015). The $\alpha$ parameter corrects for possible discrepancies between the national vote and the weighted average of state polls. Possible sources of discrepancies may include: 
 
 * the fact that when polls are not available for all states, polled states can be on average more blue or more red than the country as a whole (not a problem any more since the 50-state Washington Post/SurveyMonkey poll); 
 * changes in state weights since 2012; 
@@ -185,13 +181,21 @@ The idea is that while national poll _levels_ may be off and generally not very 
 
 ### How vote intentions evolve
 
-In order to smoothe out vote intentions by state and obtain latent vote intentions at dates in which no polls were conducted, I use 2 reverse random walk priors for $\mu_a$ and $\mu_b^{weekly}$ from $t_{last}$ to April 1:
+In order to smooth out vote intentions by state and obtain latent vote intentions at dates in which no polls were conducted, I use 2 reverse random walk priors for $\mu_a$ and $\mu_b^{weekly}$ from $t_{last}$ to April 1:
 
 $$\mu_b^{weekly}[w_t-1, s] \sim \textrm{Normal}(\mu_b^{weekly}[w_t, s], \sigma_b \cdot \sqrt{7})$$
 
 $$\mu_a[t-1]   \sim \textrm{Normal}(\mu_a[t], \sigma_a)$$
 
-$\sigma_a$ and $\sigma_b$ are respectively set to `r sigma_walk_a_past` and `r sigma_walk_b_past` from April 1 (start of the analysis) to today -- these are essentially smoothing parameters. These priors express the belief that the day-to-day standard deviation of latent vote intentions is about `r round(sd(inv_logit(rnorm(1e4, 0, sigma_walk_a_past)+ rnorm(1e4, 0, sigma_walk_b_past)))*100,1)`%, and that about `r round(sigma_walk_a_past^2/(sigma_walk_a_past^2 + sigma_walk_b_past^2)*10)*10`% of the day-to-day variance in vote intentions is explained by national swings.
+Both $\sigma_a$ and $\sigma_b$ are given uniform priors between 0 and 0.1. 
+
+Their posterior marginal distributions are shown below. The median day-to-day total standard deviation of vote intentions is about `r round(sd(inv_logit(rnorm(1e4,0, sqrt(median(sigma_walk_a_past)^2 + median(sigma_walk_b_past)^2))))*100, 1)`%. The model seems to find that most of the changes in latent vote intentions are attributable to national swings rather than state-specific swings (national swings account on average for about `r round(median(sigma_walk_a_past)^2/(median(sigma_walk_a_past)^2 + median(sigma_walk_b_past)^2),2)*100`% of the total day-to-day variance). 
+
+```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4}
+<<sigma_walk>>
+```
+
+
 
 ## Forward Component: Vote Intention Forecast
 
@@ -214,7 +218,17 @@ For the covariance matrix $\mathbf{\Sigma}$, I set the variance to `r sigma_mu_b
 
 * This prior is relatively imprecise as to the expected final scores in any given state; for example, in a state like Virginia, which Obama won by `r round(states2012["VA",]$score*100,1)`% in 2012 (a score identical to his national score), Hillary Clinton is expected to get `r round(inv_logit(mu_b_prior["VA"])*100,1)`% of the vote, with a 95% certainty that her score will not fall below `r round(quantile(inv_logit(m[,"VA"]), .025)*100)`% or exceed `r round(quantile(inv_logit(m[,"VA"]), .975)*100)`%. 
 
-* State scores are also expected to be correlated with each other: according to the prior, there is a `r round(mean(m[,"TX"] < m[,"VA"])*100, 1)`% chance that Hillary Clinton's score in Virginia will exceed her score in Texas (whereas one would expect this unrealistic scenario to happen with only `r round(mean(m0[,"TX"] < m0[,"VA"])*100)`% certainty if the priors were independent). The covariance matrix implies that the correlation between the 2012 and 2016 scores by state is expected to be about `r round(median(rho),2)`, with 95% confidence that it will be between `r round(quantile(rho, .025), 2)` and `r round(quantile(rho, .975), 2)`  (as opposed to `r round(median(rho0),2)` [`r round(quantile(rho0, .025), 2)`, `r round(quantile(rho0, .975), 2)`] if covariances were set to zero), which is in line with observed correlations in all elections since 1992 [http://election.princeton.edu/2016/06/02/the-realignment-myth/].
+* State scores are also expected to be correlated with each other. For example, according to the prior (before looking at polling data), there is only a `r round(mean(m[,"TX"] > m[,"VA"])*100, 1)`% chance that Hillary Clinton will perform worse in Virginia than in Texas. If the priors were independent, this unlikely event could happen with a `r round(mean(m0[,"TX"] > m0[,"VA"])*100)`% probability.
+
+```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4}
+<<TX-VA-example>>
+```
+
+The covariance matrix implies that the correlation between the 2012 state scores and 2016 state priors is expected to be about `r round(median(rho),2)` (as opposed to `r round(median(rho0),2)` if covariances were set to zero). The simulated distribution of correlations between state priors and 2012 scores is in line with observed correlations of state scores with previous election results since 1988 [http://election.princeton.edu/2016/06/02/the-realignment-myth/].
+
+```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4}
+<<correlation_states_graph>>
+```
 
 To put it differently, the model does not have a very precise prior about final scores, but it does assume that most of this uncertainty is attributable to national-level swings in vote intentions. 
 
@@ -225,7 +239,7 @@ From election day to the date of the latest available poll $t_{last}$, vote inte
 
 $$\mu_b^{weekly}[w_t-1, 1 \dots S] \sim \textrm{Multivariate Normal}(\mu_b^{weekly}[w_t, 1 \dots S], \mathbf{\Sigma_b^{walk}})$$
 
-I set $\mathbf{\Sigma_b^{walk}}$ so that all variances equal `r sprintf(sigma_walk_b_forecast[1,1], fmt = "%0.5f")` and all covariances equal `r sprintf(sigma_walk_b_forecast[1,2], fmt = "%0.5f")` ($\rho =$ `r sigma_walk_b_forecast[1,2]/sigma_walk_b_forecast[1,1]`). This implies a `r round(sd(inv_logit(rnorm(1e4, 0, sqrt(sigma_walk_b_forecast[1,1])/sqrt(7))))*100, 1)`% standard deviation in daily vote intentions changes in a state where Hillary Clinton's score is close to 50%. To put it differently, the prior is 95% confident that Hillary Clinton's score in any given state where she is currently polling around 50% should not move up or down by more than `r round(100*sqrt(as.numeric(election_day - Sys.Date())) * sd(inv_logit(rnorm(1e5, 0, sqrt(sigma_walk_b_forecast[1,1])/sqrt(7))))*1.96, 1)`% over the remaining `r as.numeric(election_day - Sys.Date())` days until the election. 
+I set $\mathbf{\Sigma_b^{walk}}$ so that all variances equal $`r sprintf(sqrt(sigma_walk_b_forecast[1,1]/7), fmt = "%0.3f")`^2 \times 7$ and all covariances equal `r sprintf(sigma_walk_b_forecast[1,2], fmt = "%0.5f")` ($\rho =$ `r sigma_walk_b_forecast[1,2]/sigma_walk_b_forecast[1,1]`). This implies a `r round(sd(inv_logit(rnorm(1e4, 0, sqrt(sigma_walk_b_forecast[1,1])/sqrt(7))))*100, 1)`% standard deviation in daily vote intentions changes in a state where Hillary Clinton's score is close to 50%. To put it differently, the prior is 95% confident that Hillary Clinton's score in any given state where she is currently polling around 50% should not move up or down by more than `r round(100*sqrt(as.numeric(election_day - Sys.Date())) * sd(inv_logit(rnorm(1e5, 0, sqrt(sigma_walk_b_forecast[1,1])/sqrt(7))))*1.96, 1)`% over the remaining `r as.numeric(election_day - Sys.Date())` days until the election. 
 
 ### Poll house effects
 
@@ -233,12 +247,12 @@ Each pollster $p$ can be biased towards Clinton or Trump:
 
 $$\mu_c[p] \sim \textrm{Normal}(0, \sigma_c)$$
 
-$$\sigma_c \sim \textrm{Uniform}(0, 0.5)$$
+$$\sigma_c \sim \textrm{Uniform}(0, 0.2)$$
 
 ### Discrepancy between national polls and the average of state polls
 
 I give the $\alpha$ parameter a prior centered around the observed distance of polled state voters
-from the national vote in 2012 (not very useful any more, since all states except DC have been polled at least once): 
+from the national vote in 2012 (this was useful until early September, when lots of solid red states had still not been polled and the average polled state voter was more pro-Clinton than the average US voter.): 
 
 $$\bar{\delta_S} = \sum_{s \in \{1 \dots S\}} \omega_s \cdot \pi^{obama'12}_s - \pi^{obama'12}$$
 
@@ -246,12 +260,12 @@ $$\alpha \sim \textrm{Normal}(\textrm{logit} (\bar{\delta_S}), 0.2)$$
 
 ### Measurement noise
 
-The noise term $u_i$ is normally distributed, with standard error $\sigma_u^{national}$ for national polls, and $\sigma_u^{state}$ for state polls. I give both standard errors a uniform distribution between 0 and 1.
+The noise term $u_i$ is normally distributed around zero, with standard error $\sigma_u^{national}$ for national polls, and $\sigma_u^{state}$ for state polls. I give both standard errors a uniform distribution between 0 and 0.1.
 
 # Convergence Checks 
 
 
-With 4 chains and 2000 iterations (the first 1000 iterations of each chain are discarded), the model runs in less than 10 minutes on my 4-core Intel i7 MacBookPro.
+With 4 chains and 2000 iterations (the first 1000 iterations of each chain are discarded), the model runs in about 10 minutes on my 4-core Intel i7 MacBookPro.
 
 ```{r echo=FALSE}
 <<model_checks>>
