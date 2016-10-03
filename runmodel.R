@@ -47,7 +47,7 @@ get_polls <- function(national = FALSE, file, start_date){
                    endmm = as.integer(substring(end.date, 6, 7)),
                    enddd = as.integer(substring(end.date, 9, 10)),
                    state = "--") %>%
-            filter(vtype == "Likely Voters" | vtype == "Registered Voters" | vtype == "Adults")
+            filter((vtype == "Likely Voters" | vtype == "Registered Voters" | vtype == "Adults") & pop > 1)
     }
     polls_df <- polls_df %>% 
         mutate(pollster = str_extract(pollster, pattern = "[A-z ]+") %>% sub("\\s+$", "", .),

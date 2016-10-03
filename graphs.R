@@ -9,6 +9,7 @@ library(mapproj)
 library(knitr)
 library(mvtnorm)
 library(DT)
+library(reshape2)
 
 rm(list = ls())
 setwd("~/GitHub/polls")
@@ -26,42 +27,47 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
                           "\nPr(Clinton wins) =", 
                           round(pred[pred$state %in% ordered_states & pred$t == election_day,]$clinton_win, 2))
     names(state_labels) <- ordered_states
+    g <- ggplot(data = pred[pred$state %in% state_abbr_vec,])  
     if (show_sim == TRUE){
-        g <- ggplot(data = pred[pred$state %in% state_abbr_vec,])
         for (i in 1:100){
             g <- g + geom_line(data = data.frame(p = as.vector(p_subset[i,,state_abbr_vec]), 
                                                  t = rep(dates, length(state_abbr_vec)), 
                                                  state = rep(state_abbr_vec, each = length(dates))), 
                                aes(x = t, y = 100*p), 
-                               col = "darkgrey", alpha = .1)
+                               col = "blue", alpha = .2, size = .1)
         }
-    }else{
-        g <- ggplot(data = pred[pred$state %in% state_abbr_vec,])
     }
-    g <- g +
-        # geom_line(aes(x = t, y = 100*p, linetype = ifelse(t < max(all_t), "dotted",  "solid")), color = "blue") +
-        geom_point(data = df[df$state %in% state_abbr_vec,],
-                   aes(x = t, y = 100*p_clinton),
-                   color = "blue", size = 1/min(2, length(state_abbr_vec))) +
+    g <- g + 
         geom_ribbon(aes(x = t, ymin = 100*low, ymax = 100*high), 
                     alpha = 0.2, fill = "blue") + 
-        geom_vline(xintercept = as.numeric(election_day)) +
         geom_hline(yintercept = 50) +
         geom_hline(data = data.frame(state = state_abbr_vec, prior = 100*inv_logit(mu_b_prior[state_abbr_vec])), 
                    color = "black", linetype = "dotted",
                    aes(yintercept=prior)) +
+        geom_vline(xintercept = as.numeric(election_day)) +
+        geom_point(data = df[df$state %in% state_abbr_vec,],
+                   aes(x = t, y = 100*p_clinton, alpha = -sqrt(p_clinton*(1-p_clinton)/n_respondents)),
+                   size = 1/min(2, 2+length(state_abbr_vec)))  + 
+        scale_alpha(range = c(.1, 1)) +
         geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t <= max(all_t),], 
-                  aes(x = t, y = 100*p), color = "blue") +
+                  aes(x = t, y = 100*p), color = "white", size = ifelse(length(state_abbr_vec) <= 2, 1, .8)) +
+        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t <= max(all_t),], 
+                  aes(x = t, y = 100*p), color = "darkblue", size = ifelse(length(state_abbr_vec) <= 2, .8, .6)) +
         geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t >= max(all_t),], 
-                  aes(x = t, y = 100*p), color = "blue", linetype = "dotted") +
-        ylab("Clinton Vote in %") +
-        xlab("") + scale_linetype_discrete(guide=FALSE) +
+                  aes(x = t, y = 100*p), color = "white", linetype = "solid", 
+                  size = ifelse(length(state_abbr_vec) <= 2, .8, .6), alpha = .5) +
+        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t >= max(all_t),], 
+                  aes(x = t, y = 100*p), color = "darkblue", linetype = "11", 
+                  size = ifelse(length(state_abbr_vec) <= 2, .8, .6)) +
+        guides(color = FALSE, alpha = FALSE, linetype = FALSE) + 
+        # scale_linetype_discrete(guide=FALSE) +
         facet_wrap(~ state, ncol = ncolumns, labeller = as_labeller(state_labels, multi_line = TRUE)) +
+        ylab("Clinton Vote in %") +
+        xlab("") + 
+        scale_x_date(date_breaks = ifelse(length(state_abbr_vec) <= 2, "1 month", "2 month"), date_labels = "%b")
         theme(strip.text.y = element_text(angle = 0))
     return(g)
 }
-
-
 ##################################
 # Plot state and national trends #
 ##################################
@@ -268,17 +274,71 @@ prev_df <- data.frame(r = c(0.9822, 0.9431, 0.9762, 0.9563, 0.9297, 0.8959, 0.93
 
 ggplot(data = cor_df) + 
     geom_histogram(aes(x = r, ..density..), bins = 50, color = "darkgrey", fill = "grey") + 
-    geom_point(data = prev_df, aes(y = 0, x = r), size = .75) + geom_text(data = prev_df, aes(y = 0, x = r, label = year), angle = 90, size = 2.5, hjust = "left", nudge_y = 3) +
+    geom_point(data = prev_df, aes(y = 0, x = r), size = .75) + 
+    geom_text(data = prev_df, aes(y = 0, x = r, label = year), angle = 90, size = 2.5, hjust = "left", nudge_y = 3) +
     facet_wrap(~ type) + 
     xlab("Correlation between 2016 and 2012 state scores") + 
     ylab("Density")
 
 # @knitr sigma_walk
 
-ggplot(data.frame(sigma = c(sigma_walk_a_past, 
-                            sigma_walk_b_past), 
-                  name = c(rep("sigma_a", nrow(mu_a)), 
-                           rep("sigma_b", nrow(mu_a))))) + 
-    geom_histogram(aes(x = sigma), bins = 50, fill = "grey", color = "darkgrey") + facet_grid(name ~ .) +
+ggplot() + 
+    geom_histogram(data = data.frame(sigma = c(sigma_walk_a_past, 
+                                               sigma_walk_b_past), 
+                                     name = c(rep("sigma_a", nrow(mu_a)), 
+                                              rep("sigma_b", nrow(mu_a)))),
+                   aes(x = sigma), bins = 50, fill = "grey", color = "darkgrey") + 
+    facet_grid(name ~ .) +
+    geom_vline(data = data.frame(median = c(median(sigma_walk_a_past), 
+                                            median(sigma_walk_b_past)),
+                                 name = c("sigma_a", "sigma_b")), 
+               aes(xintercept = median), linetype = "dotted") +
+    geom_text(data = data.frame(median = c(median(sigma_walk_a_past), 
+                                           median(sigma_walk_b_past)),
+                                name = c("sigma_a", "sigma_b")),
+              aes(x = median, y = 400, label = round(median, 3))) +
     ylab("Number of simulations") +
     xlab("Backward component: reverse random walk standard deviations")
+
+# @knitr rnd_walk
+
+remaining_days <- as.Date("2016-08-01", origin = "1970-01-01"):election_day
+
+plot_data <- list()
+for(i in 1:3){
+sim_rnd_walk <- 
+    rbind(rmvnorm(1, mu_b_prior[-1], sigma_mu_b_end),
+          rmvnorm(length(remaining_days)-1, rep(0, length(mu_b_prior) - 1), 
+                  cov_matrix(length(mu_b_prior) - 1, 
+                             sigma_walk_b_forecast[1,1]/7, 
+                             rho = sigma_walk_b_forecast[2,1]/sigma_walk_b_forecast[1,1]))) %>%
+    apply(., 2, function(vec) cumsum(vec)) %>%
+    apply(., 2, rev) %>%
+    inv_logit(.)
+    rownames(sim_rnd_walk) <- as.character(remaining_days)
+    sim_rnd_walk <- as.data.frame(sim_rnd_walk)
+    sim_rnd_walk$date <- as.Date(remaining_days, origin= "1970-01-01")
+    plot_data[[i]] <- melt(sim_rnd_walk, id.var = "date")
+    plot_data[[i]]$sim <- i
+}
+
+plot_data <- rbind(plot_data[[1]], plot_data[[2]], plot_data[[3]])
+plot_data <- plot_data %>% 
+    rename(state = variable, clinton = value) %>% 
+    group_by(state, sim) %>% 
+    mutate(last = last(clinton)) %>% 
+    ungroup
+
+ggplot(data = plot_data[plot_data$date >= Sys.Date(),])  +
+    facet_grid(. ~ sim) + 
+    geom_line(aes(x=as.Date(date), y=clinton, group=state, color = last), alpha = .5, size = .2) + 
+    scale_color_gradientn(colors = c("darkred", "red", "purple", "royalblue", "blue"), values = c(0,.4,.5,.8,1)) +
+    guides(color = FALSE) +
+    xlab("") + 
+    ylab("Clinton vote intentions (Simulation)") +
+    geom_point(data = plot_data[plot_data$date == election_day,],
+               aes(x=as.Date(date), y=clinton, color = last), size = .4) + 
+    geom_text(data = plot_data[plot_data$date == election_day,],
+              aes(x = as.Date(date), y = clinton, label = state), 
+              size = 2.5, hjust = "left", nudge_x = 1, check_overlap = TRUE) + 
+    xlim(c(as.Date(remaining_days[1], origin = "1970-01-01"), as.Date("2016-11-21", origin = "1970-01-01")))

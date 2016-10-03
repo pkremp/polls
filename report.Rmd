@@ -54,9 +54,11 @@ knitr::kable(last_polls, col.names = c("End Date", "Source", "State", "% Clinton
 This graph shows the posterior median (blue line) and 90% credible interval (light blue area) of Hillary Clinton's share of the national vote, derived from the weighted average of latent state-by-state vote intentions (using the same state weights as in the 2012 presidential election, adjusted for state adult population growth between 2011 and 2015). 
 $$\pi^{clinton}[t, US] = \sum_{s \in S} \omega_s \cdot \textrm{logit}^{-1} (\mu_a[t] + \mu_b[t, s])$$
 
+The thin blue lines represent 100 draws from the posterior distribution.
+
 From today to November 8, Hillary Clinton's share of the national vote is predicted to shrink partially towards the Time for Change prior (shown with the dotted black line).
 
-Each national poll is represented as a blue dot. Hillary Clinton's national poll numbers seem to be running about 
+Each national poll is represented as a dot (darker dots have narrower margins of error). Hillary Clinton's national poll numbers seem to be running about 
 `r round((inv_logit(logit(pred$p[pred$t == all_t[length(all_t)]  & pred$state == "--"])) - inv_logit(logit(pred$p[pred$t == all_t[length(all_t)] & pred$state == "--"]) + median(alpha))) * 20, 1)*5` points below the level that would be consistent with the latent state-by-state vote intentions.
 
 ```{r echo=FALSE, message=FALSE}
@@ -65,7 +67,7 @@ Each national poll is represented as a blue dot. Hillary Clinton's national poll
 
 # State Vote 
 
-The following graphs show vote intention by state (with 100 draws from the posterior distribution represented as thin grey lines).
+The following graphs show vote intention by state (with 100 draws from the posterior distribution represented as thin blue lines).
 
 $$\pi^{clinton}[t,s] = \textrm{logit}^{-1} (\mu_a[t] + \mu_b[t, s])$$
 
@@ -187,7 +189,7 @@ $$\mu_b^{weekly}[w_t-1, s] \sim \textrm{Normal}(\mu_b^{weekly}[w_t, s], \sigma_b
 
 $$\mu_a[t-1]   \sim \textrm{Normal}(\mu_a[t], \sigma_a)$$
 
-Both $\sigma_a$ and $\sigma_b$ are given uniform priors between 0 and 0.1. 
+Both $\sigma_a$ and $\sigma_b$ are given uniform priors between 0 and 0.05. 
 
 Their posterior marginal distributions are shown below. The median day-to-day total standard deviation of vote intentions is about `r round(sd(inv_logit(rnorm(1e4,0, sqrt(median(sigma_walk_a_past)^2 + median(sigma_walk_b_past)^2))))*100, 1)`%. The model seems to find that most of the changes in latent vote intentions are attributable to national swings rather than state-specific swings (national swings account on average for about `r round(median(sigma_walk_a_past)^2/(median(sigma_walk_a_past)^2 + median(sigma_walk_b_past)^2),2)*100`% of the total day-to-day variance). 
 
@@ -241,6 +243,12 @@ $$\mu_b^{weekly}[w_t-1, 1 \dots S] \sim \textrm{Multivariate Normal}(\mu_b^{week
 
 I set $\mathbf{\Sigma_b^{walk}}$ so that all variances equal $`r sprintf(sqrt(sigma_walk_b_forecast[1,1]/7), fmt = "%0.3f")`^2 \times 7$ and all covariances equal `r sprintf(sigma_walk_b_forecast[1,2], fmt = "%0.5f")` ($\rho =$ `r sigma_walk_b_forecast[1,2]/sigma_walk_b_forecast[1,1]`). This implies a `r round(sd(inv_logit(rnorm(1e4, 0, sqrt(sigma_walk_b_forecast[1,1])/sqrt(7))))*100, 1)`% standard deviation in daily vote intentions changes in a state where Hillary Clinton's score is close to 50%. To put it differently, the prior is 95% confident that Hillary Clinton's score in any given state where she is currently polling around 50% should not move up or down by more than `r round(100*sqrt(as.numeric(election_day - Sys.Date())) * sd(inv_logit(rnorm(1e5, 0, sqrt(sigma_walk_b_forecast[1,1])/sqrt(7))))*1.96, 1)`% over the remaining `r as.numeric(election_day - Sys.Date())` days until the election. 
 
+The graph below shows shows 3 random draws from the prior distribution of $mu_b$, to help visualize the assumptions regarding the forward component of the model.
+
+```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4}
+<<rnd_walk>>
+```
+
 ### Poll house effects
 
 Each pollster $p$ can be biased towards Clinton or Trump:
@@ -269,10 +277,4 @@ With 4 chains and 2000 iterations (the first 1000 iterations of each chain are d
 
 ```{r echo=FALSE}
 <<model_checks>>
-```
-
-These are the median values for $\mu_a$ (in red) and $\mu_b$ (in grey) parameters:
-
-```{r echo=FALSE, message=FALSE}
-<<plot_mu>>
 ```

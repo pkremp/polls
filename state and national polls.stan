@@ -43,8 +43,8 @@ parameters{
     real u[N];
     real<lower = 0, upper = 0.1> sigma_u_national;
     real<lower = 0, upper = 0.1> sigma_u_state;
-    real<lower = 0, upper = 0.1> sigma_walk_a_past;
-    real<lower = 0, upper = 0.1> sigma_walk_b_past;
+    real<lower = 0, upper = 0.05> sigma_walk_a_past;
+    real<lower = 0, upper = 0.05> sigma_walk_b_past;
 }
 
 transformed parameters{
