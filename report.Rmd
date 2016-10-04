@@ -1,5 +1,6 @@
 ---
 title: "State and National Poll Aggregation"
+author: Pierre-Antoine Kremp
 output: 
   html_document:
     theme: readable
@@ -26,6 +27,8 @@ This is a Stan implementation of Drew Linzer's dynamic Bayesian election forecas
 For more details on the original model: 
 
 Linzer, D. 2013. "Dynamic Bayesian Forecasting of Presidential Elections in the States." _Journal of the American Statistical Association_. 108(501): 124-134.  [(link)](http://votamatic.org/wp-content/uploads/2013/07/Linzer-JASA13.pdf)
+
+The Stan and R files are available [here](http://github.com/pkremp/polls).
 
 ---
 
