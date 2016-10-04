@@ -29,10 +29,10 @@ Linzer, D. 2013. "Dynamic Bayesian Forecasting of Presidential Elections in the 
 
 ---
 
-Ten most recently added polls: 
+10 most recent polls: 
 
 ```{r echo=FALSE, message=TRUE}
-knitr::kable(last_polls, col.names = c("End Date", "Source", "State", "% Clinton", "% Trump", "N"))
+knitr::kable(last_polls, col.names = c("Date", "Source", "State", "% Clinton", "% Trump", "N"))
 ```
 
 ---
@@ -130,6 +130,8 @@ When multiple polls are available by the same pollster, at the same date, and fo
 polls of likely voters rather than registered voters, and polls for which $N^{clinton} + N^{trump}$ is
 the smallest (assuming that these are poll questions in which respondents are given the option to choose a
 third-party candidate, rather than "pushy" questions in which respondents are only asked to choose between the two leading candidates -- these polls tend to be less favorable to Hillary Clinton).
+
+To account for the fact that polls can be conducted over several days, I set the poll date to the midpoint between the day the poll started and the day it ended.
 
 # Model 
 

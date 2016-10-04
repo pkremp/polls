@@ -106,11 +106,17 @@ dp <- data.frame(polls = colnames(mu_c),
                  house_effect_P95 = 100*(inv_logit(as.vector(apply(mu_c, 2, function(x) quantile(x, 0.95))))-.5))
 
 ggplot(data = dp) + 
-    geom_histogram(aes(x = house_effect_P50, 
-                       fill = ifelse(house_effect_P50>=0, "Pro-Clinton Bias", "Pro-Trump Bias")), 
+    geom_histogram(data = dp[dp$house_effect_P50 > 0,], aes(x = house_effect_P50), 
+                   fill = "#6E90F8", color = "blue", 
                    boundary = 0,
-                   bins = 40) + 
-    scale_fill_manual(values=c("#6E90F8", "#FF6666"), guide = guide_legend(title = "")) +
+                   bins = 20) +
+    geom_histogram(data = dp[dp$house_effect_P50 <= 0,], aes(x = house_effect_P50), 
+                   fill = "#FF6666", color = "red", 
+                   boundary = 0,
+                   bins = 20) +
+    # geom_histogram adds a horizontal line at y=0 where count == 0; redrawing it to get the right color.
+    geom_line(data = data.frame(x = c(min(dp$house_effect_P50), 0), y = c(0,0)), aes(x,y), color = "red") +
+    geom_line(data = data.frame(x = c(max(dp$house_effect_P50), 0), y = c(0,0)), aes(x,y), color = "blue") +
     xlab("Approximate Pollster House Effect in Percentage Points") + 
     ylab("Number of pollsters") + 
     scale_y_continuous(breaks = seq(0,100, 2))
@@ -209,24 +215,32 @@ colnames(m0) <- all_polled_states[-1]
 ## @knitr table_predictions
 
 table_pred <- data.frame(pred[pred$t == all_t[length(all_t)], c("state","p")], pred[pred$t == election_day, c("p", "clinton_win")])
-table_pred$state_name <- state_name[as.character(table_pred$state)]
-table_pred$state_name[is.na(table_pred$state_name)] <- "National Vote"
+colnames(table_pred) <- c("state", "p_now", "p_forecast", "clinton_win")
 table_pred[,2:3] <- round(table_pred[,2:3], 3)
 table_pred[,4] <- round(table_pred[,4],2)
+table_pred$state <- table_pred$state %>% as.character
+table_pred$state_name <- state_name[as.character(table_pred$state)]
+table_pred$state_name[is.na(table_pred$state_name)] <- "*National Vote*"
 rownames(table_pred) <- NULL
 colors_red_to_blue <- colorRampPalette(c("#FF6666", "white","#6E90F8"))
+table_pred <- table_pred %>% 
+    left_join(df %>% group_by(state) %>% 
+                  summarize(number_polls = n()) %>% 
+                  ungroup())
+table_pred$prior <- inv_logit(mu_b_prior)[table_pred$state]
+table_pred$diffprior_now <-table_pred$p_now - table_pred$prior
 
 # kable(table_pred[,c(5,2:4)], col.names = c("State", "Current Score", "Forecast Score", "Pr(Clinton Wins)"))
 # Note: kable will not highlight rows/cells; using datatable (DT package) instead.
 
-datatable(table_pred[,c(5,2:4)], 
-          colnames = c("State", "Current Score", "Forecast Score", "Pr(Clinton Wins)"),
+datatable(table_pred[,c("state_name", "number_polls", "prior", "diffprior_now", "p_now", "p_forecast", "clinton_win")], 
+          colnames = c("State", "Number of Polls", "Prior", "Current - Prior", "Current Score", "Forecast Score", "Pr(Clinton Wins)"),
           rownames = FALSE,
           options = list(dom = c('f t'), pageLength = nrow(table_pred))) %>% 
     formatStyle('clinton_win', 
                 backgroundColor=styleInterval(seq(.01,.99,.01), colors_red_to_blue(100))) %>%
     formatPercentage('clinton_win', 0) %>%
-    formatPercentage(c('p', 'p.1'), 1)
+    formatPercentage(c('prior', 'diffprior_now', 'p_now', 'p_forecast'), 1)
 
 # correlation_states
 m <- rmvnorm(1e4, mu_b_prior[-1], sigma_mu_b_end)

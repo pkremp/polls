@@ -46,12 +46,17 @@ get_polls <- function(national = FALSE, file, start_date){
             mutate(endyy = as.integer(substring(end.date, 1, 4)),
                    endmm = as.integer(substring(end.date, 6, 7)),
                    enddd = as.integer(substring(end.date, 9, 10)),
+                   begyy = as.integer(substring(start.date, 1, 4)),
+                   begmm = as.integer(substring(start.date, 6, 7)),
+                   begdd = as.integer(substring(start.date, 9, 10)),
                    state = "--") %>%
             filter((vtype == "Likely Voters" | vtype == "Registered Voters" | vtype == "Adults") & pop > 1)
     }
     polls_df <- polls_df %>% 
         mutate(pollster = str_extract(pollster, pattern = "[A-z ]+") %>% sub("\\s+$", "", .),
-               t = as.Date(paste(endmm, enddd, endyy, sep = "/"), format="%m/%d/%Y"),
+               end = as.Date(paste(endmm, enddd, endyy, sep = "/"), format="%m/%d/%Y"),
+               begin = as.Date(paste(begmm, begdd, begyy, sep = "/"), format="%m/%d/%Y"),
+               t = end - (1 + as.numeric(end-begin)) %/% 2, # t is the midpoint between begin and end date of the poll
                undecided = ifelse(is.na(undecided), 0, undecided),
                other = ifelse(is.na(other), 0, other),
                sum = clinton + trump
@@ -143,6 +148,7 @@ df <- rbind(national_polls, state_polls) %>%
            index_w = as.numeric(as.factor(week)),
            index_p = as.numeric(as.factor(as.character(pollster))))
 
+
 unique_ts <- unique(df$index_t[df$state == "--"])
 
 df$index_t_unique <- sapply(1:nrow(df), 
@@ -200,7 +206,7 @@ out <- stan("state and national polls.stan",
                  sigma_walk_b_forecast = sigma_walk_b_forecast,
                  week = as.integer(as.factor(floor_date(all_t, unit="week"))),
                  day_of_week = as.numeric(format(all_t, format = "%w"))),
-     chains = 4, iter = 2000)
+     chains = 4, iter = 2500)
 
 time_lastrun <- Sys.time()
 
