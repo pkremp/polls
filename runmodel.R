@@ -206,7 +206,7 @@ out <- stan("state and national polls.stan",
                  sigma_walk_b_forecast = sigma_walk_b_forecast,
                  week = as.integer(as.factor(floor_date(all_t, unit="week"))),
                  day_of_week = as.numeric(format(all_t, format = "%w"))),
-     chains = 4, iter = 2500)
+     chains = 4, iter = 2000)
 
 time_lastrun <- Sys.time()
 
@@ -253,6 +253,7 @@ pred <- data.frame(t = rep(dates, length(all_polled_states)),
                    p =    apply(p, c(2,3), median) %>% as.vector,
                    high = apply(p, c(2,3), function(x) quantile(x, .95)) %>% as.vector,
                    low =  apply(p, c(2,3), function(x) quantile(x, .05))  %>% as.vector,
+                   sd_logit = apply(logit(p), c(2,3), sd) %>% as.vector,
                    clinton_win = apply(p, c(2,3), function(x) mean(x > .5))  %>% as.vector)
 
 # Predicted electoral votes for each simulation
