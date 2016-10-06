@@ -35,7 +35,7 @@ The Stan and R files are available [here](http://github.com/pkremp/polls).
 10 most recent polls: 
 
 ```{r echo=FALSE, message=TRUE}
-knitr::kable(last_polls, col.names = c("Date", "Source", "State", "% Clinton", "% Trump", "N"))
+knitr::kable(last_polls, col.names = c("Date (Midpoint)", "Source", "State", "% Clinton", "% Trump", "N"))
 ```
 
 ---

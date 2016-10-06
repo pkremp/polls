@@ -61,7 +61,7 @@ get_polls <- function(national = FALSE, file, start_date){
                other = ifelse(is.na(other), 0, other),
                sum = clinton + trump
         ) %>%
-        select(state, t, pollster, vtype, method, pop, trump, clinton, other, undecided, sum) %>%
+        select(state, t, begin, end, pollster, vtype, method, pop, trump, clinton, other, undecided, sum) %>%
         arrange(t, state, pollster, vtype, sum)
     polls_df$pollster <- ifelse(polls_df$pollster == "Fox News", "FOX", polls_df$pollster) # Cleaning up: noticed that Fox News polls were sometimes called "FOX", sometimes "Fox News"...
     print("Last 10 rows:")
@@ -128,7 +128,8 @@ names(ev_state) <- states2012$state
 
 # Putting together rows of national_polls and state_polls in a single date frame
 
-df <- rbind(national_polls, state_polls) %>%
+df <- rbind(national_polls, state_polls) %>% 
+       tbl_df %>%
        mutate(week = floor_date(t, unit = "week"),
            day_of_week = as.integer(format(t, format = "%w")),
            # Trick to keep "likely voter" polls when multiple results are reported.
@@ -140,7 +141,40 @@ df <- rbind(national_polls, state_polls) %>%
            n_respondents = round(pop*(clinton+trump)/100),
            p_clinton = clinton/(clinton+trump))  %>%
        arrange(state, t, polltype, sum) %>% 
-       distinct(state, t, pollster, .keep_all = TRUE) %>% # Only keeping 1 poll result per state, date, and pollster.
+       distinct(state, t, pollster, .keep_all = TRUE)
+
+print(nrow(df))
+
+df$overlap_with_prev <- TRUE
+
+while(any(df$overlap_with_prev == TRUE)){
+    # Recursively drop polls if their dates overlap
+    # Perhaps not the most efficient way, but it gets the job done, and the data frame is small.
+    df <- df %>% 
+        arrange(state, pollster, t) %>%
+        group_by(state, pollster) %>% 
+        mutate(end_prev_poll = lag(end), 
+               overlap_with_prev = ifelse(!is.na(end_prev_poll), 
+                                          end_prev_poll > begin,
+                                          FALSE),
+               overlap_with_next = ifelse(!is.na(lead(overlap_with_prev)), 
+                                          lead(overlap_with_prev), 
+                                          FALSE),
+               latest_overlap = overlap_with_prev == TRUE & 
+                   overlap_with_next == FALSE,
+               # Drop all polls which overlap with next poll
+               #                              if   next poll is the most recent (latest) poll 
+               #                                   in the series of overlapping polls.
+               drop_poll = (overlap_with_next == TRUE & 
+                                (lead(latest_overlap) == TRUE | is.na(lead(latest_overlap))))
+        ) %>%
+        filter(drop_poll == FALSE) %>%
+        ungroup
+    # The while loop keeps going until no overlap is found.
+    print(nrow(df))
+}
+
+df <- df %>% 
        select(n_clinton, n_respondents, p_clinton, state, pollster, t, week, day_of_week) %>%
        mutate(index_s = as.numeric(as.factor(as.character(state))), 
               # Factors are alphabetically sorted: 1 = --, 2 = AL, 3 = AK, 4 = AZ...
@@ -253,9 +287,10 @@ pred <- data.frame(t = rep(dates, length(all_polled_states)),
                    p =    apply(p, c(2,3), median) %>% as.vector,
                    high = apply(p, c(2,3), function(x) quantile(x, .95)) %>% as.vector,
                    low =  apply(p, c(2,3), function(x) quantile(x, .05))  %>% as.vector,
-                   sd_logit = apply(logit(p), c(2,3), sd) %>% as.vector,
                    clinton_win = apply(p, c(2,3), function(x) mean(x > .5))  %>% as.vector)
 
+cov_logit_p <- lapply(as.character(all_t), function(t) cov(logit(p[,t,-1])))
+names(cov_logit_p) <- as.character(all_t)
 # Predicted electoral votes for each simulation
 
 sim_win <- p[, as.character(election_day),-1] > 0.5
