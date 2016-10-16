@@ -78,6 +78,8 @@ $$\pi^{clinton}[t,s] = \textrm{logit}^{-1} (\mu_a[t] + \mu_b[t, s])$$
 
 As expected, 90% credible intervals (light blue areas) are wider for states and periods in which few polls are available and when state polls disagree with each other.
 
+States are sorted by predicted Clinton score on election day.
+
 ```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 5}
 <<plot_states>>
 ```

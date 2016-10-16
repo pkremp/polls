@@ -19,20 +19,38 @@ logit <- function(p) log(p/(1-p))
 
 inv_logit <- function(x) 1/(1+exp(-x))
 
+state_name_df <- data.frame(state = names(state_name), state_name = state_name, stringsAsFactors = FALSE)
+pred$state <- as.character(pred$state)
 
 plot_score <- function(state_abbr_vec, show_sim = FALSE){
     ncolumns <- min(5, length(state_abbr_vec))
-    ordered_states <- state_abbr_vec[order(state_abbr_vec)]
-    state_labels <- paste(ifelse(ordered_states != "--", state_name[ordered_states], "National Vote"), 
-                          "\nPr(Clinton wins) =", 
-                          round(pred[pred$state %in% ordered_states & pred$t == election_day,]$clinton_win, 2))
-    names(state_labels) <- ordered_states
+    # Ugly hacks to force ggplot2::facet_wrap to order states by predicted Clinton score.
+    # Creating state_pos factor variables, with levels ordered by predicted Cliton share.
+    state_ordering <- order(pred$p[pred$state %in% state_abbr_vec & pred$t == election_day])
+    allstate_ordering <- order(pred$p[pred$state %in% all_polled_states & pred$t == election_day])
+    pred$state_pos <- factor(pred$state, levels = all_polled_states[allstate_ordering])
+    df$state_pos <- factor(df$state, levels = all_polled_states[allstate_ordering])
+    
+    ordered_states <- state_abbr_vec[state_ordering]
+    winprob <- pred %>% 
+        filter(t == election_day & state %in% state_abbr_vec) %>% 
+        arrange(state) %>% select(state, clinton_win) %>% 
+        mutate(clinton_win = round(100*clinton_win)) %>%
+        left_join(state_name_df, by = 'state')
+    winprob$state_name <- ifelse(winprob$state != "--", winprob$state_name, "National Vote")
+    state_labels <- paste(winprob$state_name, 
+                          "\nPr(Clinton wins) = ", 
+                          winprob$clinton_win, "%", sep = "")
+    names(state_labels) <- winprob$state
     g <- ggplot(data = pred[pred$state %in% state_abbr_vec,])  
     if (show_sim == TRUE){
         for (i in 1:100){
             g <- g + geom_line(data = data.frame(p = as.vector(p_subset[i,,state_abbr_vec]), 
                                                  t = rep(dates, length(state_abbr_vec)), 
-                                                 state = rep(state_abbr_vec, each = length(dates))), 
+                                                 state = rep(state_abbr_vec, each = length(dates)),
+                                                 state_pos = rep(factor(state_abbr_vec, 
+                                                                        levels = state_abbr_vec[state_ordering]), 
+                                                                 each = length(dates))), 
                                aes(x = t, y = 100*p), 
                                col = "blue", alpha = .2, size = .1)
         }
@@ -41,7 +59,9 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
         geom_ribbon(aes(x = t, ymin = 100*low, ymax = 100*high), 
                     alpha = 0.2, fill = "blue") + 
         geom_hline(yintercept = 50) +
-        geom_hline(data = data.frame(state = state_abbr_vec, prior = 100*inv_logit(mu_b_prior[state_abbr_vec])), 
+        geom_hline(data = data.frame(state_pos = factor(state_abbr_vec, 
+                                                        levels = state_abbr_vec[state_ordering]), 
+                                     prior = 100*inv_logit(mu_b_prior[state_abbr_vec])), 
                    color = "black", linetype = "dotted",
                    aes(yintercept=prior)) +
         geom_vline(xintercept = as.numeric(election_day)) +
@@ -61,7 +81,7 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
                   size = ifelse(length(state_abbr_vec) <= 2, .8, .6)) +
         guides(color = FALSE, alpha = FALSE, linetype = FALSE) + 
         # scale_linetype_discrete(guide=FALSE) +
-        facet_wrap(~ state, ncol = ncolumns, labeller = as_labeller(state_labels, multi_line = TRUE)) +
+        facet_wrap(~ state_pos, ncol = ncolumns, labeller = as_labeller(state_labels, multi_line = TRUE)) +
         ylab("Clinton Vote in %") +
         xlab("") + 
         scale_x_date(date_breaks = ifelse(length(state_abbr_vec) <= 2, "1 month", "2 month"), date_labels = "%b")
@@ -81,11 +101,16 @@ plot_score("--", show_sim = TRUE)
 
 # @knitr plot_states
 
-plot_score(all_polled_states[2:11],  show_sim = TRUE)
-plot_score(all_polled_states[12:21], show_sim = TRUE)
-plot_score(all_polled_states[22:31], show_sim = TRUE)
-plot_score(all_polled_states[32:41], show_sim = TRUE)
-plot_score(all_polled_states[42:51], show_sim = TRUE)
+sorted_states <- (pred %>% filter(t == election_day & state != "--") %>% 
+                      arrange(p) %>% 
+                      select(state))[,1] %>% 
+                  as.character
+
+plot_score(sorted_states[1:10],  show_sim = TRUE)
+plot_score(sorted_states[11:20], show_sim = TRUE)
+plot_score(sorted_states[21:30], show_sim = TRUE)
+plot_score(sorted_states[31:40], show_sim = TRUE)
+plot_score(sorted_states[41:50], show_sim = TRUE)
 
 # plot_score(all_polled_states[2:11])
 # plot_score(all_polled_states[12:21])
@@ -226,7 +251,8 @@ colors_red_to_blue <- colorRampPalette(c("#FF6666", "white","#6E90F8"))
 table_pred <- table_pred %>% 
     left_join(df %>% group_by(state) %>% 
                   summarize(number_polls = n()) %>% 
-                  ungroup())
+                  ungroup()) %>%
+    arrange(state_name)
 table_pred$prior <- inv_logit(mu_b_prior)[table_pred$state]
 table_pred$diffprior_now <-table_pred$p_now - table_pred$prior
 
