@@ -30,6 +30,7 @@ Linzer, D. 2013. "Dynamic Bayesian Forecasting of Presidential Elections in the 
 
 The Stan and R files are available [here](http://github.com/pkremp/polls).
 
+<!--
 ---
 
 10 most recent polls: 
@@ -38,6 +39,7 @@ The Stan and R files are available [here](http://github.com/pkremp/polls).
 knitr::kable(last_polls, col.names = c("Date (Midpoint)", "Source", "State", "% Clinton", "% Trump", "N"))
 ```
 
+-->
 ---
 
 `r nrow(df)` polls available since `r format(as.Date(start_date), format = "%B %d, %Y")`
@@ -56,15 +58,17 @@ Note: the model is not accounting for the specific electoral vote allocation rul
 # National Vote 
 
 
-This graph shows the posterior median (blue line) and 90% credible interval (light blue area) of Hillary Clinton's share of the national vote, derived from the weighted average of latent state-by-state vote intentions (using the same state weights as in the 2012 presidential election, adjusted for state adult population growth between 2011 and 2015). 
+This graph shows the posterior median (blue line) and 90% credible interval (light blue area) of Hillary Clinton's share of the two-party national vote, derived from the weighted average of latent state-by-state vote intentions (using the same state weights as in the 2012 presidential election, adjusted for state adult population growth between 2011 and 2015). 
 $$\pi^{clinton}[t, US] = \sum_{s \in S} \omega_s \cdot \textrm{logit}^{-1} (\mu_a[t] + \mu_b[t, s])$$
 
 The thin blue lines represent 100 draws from the posterior distribution.
 
 From today to November 8, Hillary Clinton's share of the national vote is predicted to shrink partially towards the Time for Change prior (shown with the dotted black line).
 
-Each national poll is represented as a dot (darker dots have narrower margins of error). Hillary Clinton's national poll numbers seem to be running about 
-`r round((inv_logit(logit(pred$p[pred$t == all_t[length(all_t)]  & pred$state == "--"])) - inv_logit(logit(pred$p[pred$t == all_t[length(all_t)] & pred$state == "--"]) + median(alpha))) * 20, 1)*5` points below the level that would be consistent with the latent state-by-state vote intentions.
+Each national poll is represented as a dot (darker dots indicate narrower margins of error). 
+<!-- Hillary Clinton's national poll numbers seem to be running about 
+`r round(((inv_logit(logit(pred$p[pred$t == all_t[length(all_t)]  & pred$state == "--"])) - inv_logit(logit(pred$p[pred$t == all_t[length(all_t)] & pred$state == "--"]) + median(alpha))))*100, 1)` point below the level that would be consistent with the latent state-by-state vote intentions.
+-->
 
 ```{r echo=FALSE, message=FALSE}
 <<plot_national>>
@@ -131,12 +135,12 @@ Most pro-Trump polls:
 The `runmodel.R` script downloads state polls from the [Princeton Election Consortium website](http://election.princeton.edu) and national polls from the [HuffPost Pollster wesbite](http://http://elections.huffingtonpost.com/pollster) before processing the data.
 
 The model ignores third-party candidates and undecided voters.
-I restrict each poll's sample to respondents declaring vote intentions for Clinton or Trump, so that $N = N^{clinton} + N^{trump}$.
+I restrict each poll's sample to respondents declaring vote intentions for Clinton or Trump, so that $N = N^{clinton} + N^{trump}$. (This is problematic for Utah, where Evan McMullin could win).
 
 When multiple polls are available by the same pollster, at the same date, and for the same state, I pick
 polls of likely voters rather than registered voters, and polls for which $N^{clinton} + N^{trump}$ is
 the smallest (assuming that these are poll questions in which respondents are given the option to choose a
-third-party candidate, rather than "pushy" questions in which respondents are only asked to choose between the two leading candidates -- these polls tend to be less favorable to Hillary Clinton). 
+third-party candidate, rather than questions in which respondents are only asked to choose between the two leading candidates). 
 
 Polls by the same pollster and of the same state with partially overlapping dates are dropped so that only the most recent, non-overlapping polls are retained.
 
@@ -184,7 +188,7 @@ If poll $i$ is a national poll, I use the same multilevel approach (with random 
 
 $$\textrm{logit} (\pi^{clinton}_i) =  \textrm{logit}\left( \sum_{s \in \{1 \dots S\}} \omega_s \cdot \textrm{logit}^{-1} (\mu_a[t_i] + \mu_b^{weekly}[w_{t_i}, s_i]) \right) + \alpha + \mu_c[p_i] + u_i$$
 
-where $\omega_s$ represents the share of state $s$ in the total votes of the set of polled states $1 \dots S$ (based on 2012 turnout numbers adjusted for adult population growth in each state between 2011 and 2015). The $\alpha$ parameter corrects for possible discrepancies between the national vote and the weighted average of state polls. Possible sources of discrepancies may include: 
+where $\omega_s$ represents the share of state $s$ in the total votes of the set of polled states $1 \dots S$ (based on 2012 turnout numbers adjusted for adult population growth in each state between 2011 and 2015). The $\alpha$ parameter corrects for possible discrepancies between national polls and the weighted average of state polls. Possible sources of discrepancies may include: 
 
 * the fact that when polls are not available for all states, polled states can be on average more blue or more red than the country as a whole (not a problem any more since the 50-state Washington Post/SurveyMonkey poll); 
 * changes in state weights since 2012; 

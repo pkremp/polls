@@ -26,8 +26,8 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
     ncolumns <- min(5, length(state_abbr_vec))
     # Ugly hacks to force ggplot2::facet_wrap to order states by predicted Clinton score.
     # Creating state_pos factor variables, with levels ordered by predicted Cliton share.
-    state_ordering <- order(pred$p[pred$state %in% state_abbr_vec & pred$t == election_day])
-    allstate_ordering <- order(pred$p[pred$state %in% all_polled_states & pred$t == election_day])
+    state_ordering <- order(-pred$p[pred$state %in% state_abbr_vec & pred$t == election_day])
+    allstate_ordering <- order(-pred$p[pred$state %in% all_polled_states & pred$t == election_day])
     pred$state_pos <- factor(pred$state, levels = all_polled_states[allstate_ordering])
     df$state_pos <- factor(df$state, levels = all_polled_states[allstate_ordering])
     
@@ -102,7 +102,7 @@ plot_score("--", show_sim = TRUE)
 # @knitr plot_states
 
 sorted_states <- (pred %>% filter(t == election_day & state != "--") %>% 
-                      arrange(p) %>% 
+                      arrange(-p) %>% 
                       select(state))[,1] %>% 
                   as.character
 
