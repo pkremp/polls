@@ -35,7 +35,7 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
     winprob <- pred %>% 
         filter(t == election_day & state %in% state_abbr_vec) %>% 
         arrange(state) %>% select(state, clinton_win) %>% 
-        mutate(clinton_win = round(100*clinton_win)) %>%
+        mutate(clinton_win = floor(100*clinton_win)) %>%
         left_join(state_name_df, by = 'state')
     winprob$state_name <- ifelse(winprob$state != "--", winprob$state_name, "National Vote")
     state_labels <- paste(winprob$state_name, 

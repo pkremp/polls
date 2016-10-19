@@ -4,15 +4,15 @@ data{
     int N;    // Number of polls
     int W;    // Number of weeks
     int P;    // Number of pollsters
-    int T_unique;
     int last_poll_W;
     int last_poll_T;
     int s[N]; // State index
     int t[N]; // Day index
     int w[N]; // Week index (weeks start on Sundays)
     int p[N]; // Pollster index
-    int t_unique[N]; // = Which unique national poll date index does this poll correspond to?
-    int unique_ts[T_unique];
+    int T_unique; // Number of (unique) days with at least one national poll
+    int t_unique[N]; // = Which *unique national poll day index* does this poll correspond to?
+    int unique_ts[T_unique]; 
     int unique_ws[T_unique];
     int week[last_poll_T];
     real day_of_week[last_poll_T];
@@ -69,7 +69,9 @@ transformed parameters{
         mu_b[W - wk, 2:S] = mu_b[W - wk + 1, 2:S] + sigma_walk_b_past * sqrt(7) * delta_b[W - wk, 2:S];
     }
     for (wk in 1:W) mu_b[wk, 1] = 0;
-    # Calculating weighted state averages, only for days in which there are national polls.
+    # Creating a lookup table for national vote weighted average;
+    # No need to compute values for every day:
+    # Restricting the calculation to days in which there are national polls saves computation time.
     for(i in 1:T_unique){
         mu_a_t = mu_a[unique_ts[i]]; 
         for (state in 1:(S-1)){

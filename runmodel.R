@@ -3,6 +3,7 @@ options(mc.cores = parallel::detectCores())
 
 library(rstan)
 library(dplyr)
+library(tidyr)
 library(stringr)
 library(lubridate)
 library(curl)
@@ -10,10 +11,6 @@ library(shinystan)
 library(rmarkdown)
 
 setwd("~/GitHub/polls")
-
-logit <- function(p) log(p/(1-p))
-
-inv_logit <- function(x) 1/(1+exp(-x))
 
 corr_matrix <- function(m){
 	(diag(m)^-.5 * diag(nrow = nrow(m))) %*% m %*% (diag(m)^-.5 * diag(nrow = nrow(m))) 
@@ -27,13 +24,16 @@ cov_matrix <- function(n, sigma2, rho){
     (sigma2^.5 * diag(n))  %*% m %*% (sigma2^.5 * diag(n))
 }
 
+logit <- function(x) log(x/(1-x))
+inv_logit <- function(x) 1/(1 + exp(-x))
+
 get_polls <- function(national = FALSE, file, start_date){
     url <- ifelse(national == TRUE, 
                   "http://elections.huffingtonpost.com/pollster/2016-general-election-trump-vs-clinton.csv",
                   "http://election.princeton.edu/code/data/2016_StatePolls.csv")
     curl_download(url, file)
     print(paste("Done downloading", url))
-    polls_df <- read.csv(file, header = TRUE, stringsAsFactors = FALSE)
+    polls_df <- read.csv(file, header = TRUE, stringsAsFactors = FALSE) %>% tbl_df
     colnames(polls_df) <- colnames(polls_df) %>% tolower
     if (national == TRUE){
         # Transform the national polls data frame (from HuffPost) so that
@@ -43,18 +43,17 @@ get_polls <- function(national = FALSE, file, start_date){
             rename(pop = number.of.observations,
                    vtype = population,
                    method = mode) %>%
-            mutate(endyy = as.integer(substring(end.date, 1, 4)),
-                   endmm = as.integer(substring(end.date, 6, 7)),
-                   enddd = as.integer(substring(end.date, 9, 10)),
-                   begyy = as.integer(substring(start.date, 1, 4)),
-                   begmm = as.integer(substring(start.date, 6, 7)),
-                   begdd = as.integer(substring(start.date, 9, 10)),
-                   state = "--") %>%
-            filter((vtype == "Likely Voters" | vtype == "Registered Voters" | vtype == "Adults") & pop > 1)
+            separate(end.date,   c("endyy", "endmm", "enddd"), sep = "-") %>% 
+            separate(start.date, c("begyy", "begmm", "begdd"), sep = "-") %>%
+            mutate(state = "--") %>%
+            filter((vtype == "Likely Voters" | 
+                    vtype == "Registered Voters" | 
+                    vtype == "Adults") # This is to get rid of rows showing disaggregated polls by party ID.
+                   & pop > 1) # One poll entry had only 1 respondent.
     }
     polls_df <- polls_df %>% 
         mutate(pollster = str_extract(pollster, pattern = "[A-z ]+") %>% sub("\\s+$", "", .),
-               end = as.Date(paste(endmm, enddd, endyy, sep = "/"), format="%m/%d/%Y"),
+               end =   as.Date(paste(endmm, enddd, endyy, sep = "/"), format="%m/%d/%Y"),
                begin = as.Date(paste(begmm, begdd, begyy, sep = "/"), format="%m/%d/%Y"),
                t = end - (1 + as.numeric(end-begin)) %/% 2, # t is the midpoint between begin and end date of the poll
                undecided = ifelse(is.na(undecided), 0, undecided),
@@ -83,12 +82,6 @@ state_polls <- get_polls(national = FALSE,
 national_polls <- get_polls(national = TRUE,
                             file = "national_polls.csv",
                             start_date = start_date)
-
-# state_polls <- get_polls(file = "state_polls.csv",
-#                          start_date = start_date)
-# 
-# national_polls <- get_polls(file = "national_polls.csv",
-#                             start_date = start_date)
 
 
 all_polled_states <- state_polls$state %>% unique %>% sort
@@ -175,7 +168,7 @@ while(any(df$overlap_with_prev == TRUE)){
 }
 
 df <- df %>% 
-       select(n_clinton, n_respondents, p_clinton, state, pollster, t, week, day_of_week) %>%
+       select(n_clinton, n_respondents, p_clinton, state, pollster, t, week, day_of_week, end) %>%
        mutate(index_s = as.numeric(as.factor(as.character(state))), 
               # Factors are alphabetically sorted: 1 = --, 2 = AL, 3 = AK, 4 = AZ...
            index_t = 1 + as.numeric(t) - min(as.numeric(all_t)),
@@ -291,6 +284,12 @@ pred <- data.frame(t = rep(dates, length(all_polled_states)),
 
 cov_logit_p <- lapply(as.character(all_t), function(t) cov(logit(p[,t,-1])))
 names(cov_logit_p) <- as.character(all_t)
+
+# logit_forecast <- logit(pred$p[pred$t == election_day & pred$state != "--"])
+# names(logit_forecast) <- pred$state[pred$t == election_day & pred$state != "--"]
+# cov_logit_forecast <- cov(logit(p[,as.character(election_day),-1]))
+# cov_forecast <- cov(p[,as.character(election_day),-1])
+
 # Predicted electoral votes for each simulation
 
 sim_win <- p[, as.character(election_day),-1] > 0.5
