@@ -27,12 +27,14 @@ cov_matrix <- function(n, sigma2, rho){
 logit <- function(x) log(x/(1-x))
 inv_logit <- function(x) 1/(1 + exp(-x))
 
-get_polls <- function(national = FALSE, file, start_date){
-    url <- ifelse(national == TRUE, 
-                  "http://elections.huffingtonpost.com/pollster/2016-general-election-trump-vs-clinton.csv",
-                  "http://election.princeton.edu/code/data/2016_StatePolls.csv")
-    curl_download(url, file)
-    print(paste("Done downloading", url))
+get_polls <- function(national = FALSE, file, start_date, download = TRUE){
+    if (download == TRUE){
+        url <- ifelse(national == TRUE, 
+                      "http://elections.huffingtonpost.com/pollster/2016-general-election-trump-vs-clinton.csv",
+                      "http://election.princeton.edu/code/data/2016_StatePolls.csv")
+        curl_download(url, file)
+        print(paste("Done downloading", url))
+    }
     polls_df <- read.csv(file, header = TRUE, stringsAsFactors = FALSE) %>% tbl_df
     colnames(polls_df) <- colnames(polls_df) %>% tolower
     if (national == TRUE){
@@ -78,6 +80,14 @@ start_date <- as.Date("2016-04-01") # Keeping all polls after April 1, 2016.
 state_polls <- get_polls(national = FALSE,
                          file = "state_polls.csv",
                          start_date = start_date)
+
+# In case election.princeton.edu failed to get all the state polls, just run the ev_update.py script locally
+# and try:
+state_polls <- get_polls(national = FALSE,
+                        file = "2016_StatePolls.csv",
+                        download = FALSE,
+                        start_date = start_date)
+
 
 national_polls <- get_polls(national = TRUE,
                             file = "national_polls.csv",
