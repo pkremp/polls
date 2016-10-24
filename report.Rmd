@@ -30,16 +30,15 @@ Linzer, D. 2013. "Dynamic Bayesian Forecasting of Presidential Elections in the 
 
 The Stan and R files are available [here](http://github.com/pkremp/polls).
 
-<!--
+
 ---
 
-10 most recent polls: 
+Recently added polls: 
 
 ```{r echo=FALSE, message=TRUE}
-knitr::kable(last_polls, col.names = c("Date (Midpoint)", "Source", "State", "% Clinton", "% Trump", "N"))
+knitr::kable(last_polls, col.names = c("Entry Date", "Source", "State", "% Clinton / (Clinton + Trump)", "% Trump / (Clinton + Trump)", "N (Clinton + Trump)"))
 ```
 
--->
 ---
 
 `r nrow(df)` polls available since `r format(as.Date(start_date), format = "%B %d, %Y")`
@@ -132,7 +131,7 @@ Most pro-Trump polls:
 
 # Data 
 
-The `runmodel.R` script downloads state polls from the [Princeton Election Consortium website](http://election.princeton.edu) and national polls from the [HuffPost Pollster wesbite](http://http://elections.huffingtonpost.com/pollster) before processing the data.
+The `runmodel.R` script downloads state and national polls from the [HuffPost Pollster website](http://http://elections.huffingtonpost.com/pollster) as `.csv` files before processing the data.
 
 The model ignores third-party candidates and undecided voters.
 I restrict each poll's sample to respondents declaring vote intentions for Clinton or Trump, so that $N = N^{clinton} + N^{trump}$. (This is problematic for Utah, where Evan McMullin could win).

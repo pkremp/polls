@@ -35,7 +35,7 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
     winprob <- pred %>% 
         filter(t == election_day & state %in% state_abbr_vec) %>% 
         arrange(state) %>% select(state, clinton_win) %>% 
-        mutate(clinton_win = floor(100*clinton_win)) %>%
+        mutate(clinton_win = round(100*clinton_win)) %>%
         left_join(state_name_df, by = 'state')
     winprob$state_name <- ifelse(winprob$state != "--", winprob$state_name, "National Vote")
     state_labels <- paste(winprob$state_name, 
@@ -82,7 +82,7 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
         guides(color = FALSE, alpha = FALSE, linetype = FALSE) + 
         # scale_linetype_discrete(guide=FALSE) +
         facet_wrap(~ state_pos, ncol = ncolumns, labeller = as_labeller(state_labels, multi_line = TRUE)) +
-        ylab("Clinton Vote in %") +
+        ylab("Clinton Share of the Clinton + Trump Vote (in %)") +
         xlab("") + 
         scale_x_date(date_breaks = ifelse(length(state_abbr_vec) <= 2, "1 month", "2 month"), date_labels = "%b")
         theme(strip.text.y = element_text(angle = 0))
