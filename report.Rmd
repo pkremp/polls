@@ -30,15 +30,6 @@ Linzer, D. 2013. "Dynamic Bayesian Forecasting of Presidential Elections in the 
 
 The Stan and R files are available [here](http://github.com/pkremp/polls).
 
-
----
-
-Recently added polls: 
-
-```{r echo=FALSE, message=TRUE}
-knitr::kable(last_polls, col.names = c("Entry Date", "Source", "State", "% Clinton / (Clinton + Trump)", "% Trump / (Clinton + Trump)", "N (Clinton + Trump)"))
-```
-
 ---
 
 `r nrow(df)` polls available since `r format(as.Date(start_date), format = "%B %d, %Y")`
@@ -284,7 +275,17 @@ $$\alpha \sim \textrm{Normal}(\textrm{logit} (\bar{\delta_S}), 0.2)$$
 
 The noise term $u_i$ is normally distributed around zero, with standard error $\sigma_u^{national}$ for national polls, and $\sigma_u^{state}$ for state polls. I give both standard errors a uniform distribution between 0 and 0.1.
 
-# Convergence Checks 
+
+---
+
+# Recently added polls 
+
+```{r echo=FALSE, message=TRUE}
+knitr::kable(last_polls, col.names = c("Entry Date", "Source", "State", "% Clinton / (Clinton + Trump)", "% Trump / (Clinton + Trump)", "N (Clinton + Trump)"))
+```
+
+
+# Convergence checks 
 
 
 With 4 chains and 2000 iterations (the first 1000 iterations of each chain are discarded), the model runs in about 10 minutes on my 4-core Intel i7 MacBookPro.
