@@ -22,7 +22,7 @@ inv_logit <- function(x) 1/(1+exp(-x))
 state_name_df <- data.frame(state = names(state_name), state_name = state_name, stringsAsFactors = FALSE)
 pred$state <- as.character(pred$state)
 
-plot_score <- function(state_abbr_vec, show_sim = FALSE){
+plot_score <- function(state_abbr_vec, show_sim = FALSE, from = start_date){
     ncolumns <- min(5, length(state_abbr_vec))
     # Ugly hacks to force ggplot2::facet_wrap to order states by predicted Clinton score.
     # Creating state_pos factor variables, with levels ordered by predicted Cliton share.
@@ -42,7 +42,7 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
                           "\nPr(Clinton wins) = ", 
                           winprob$clinton_win, "%", sep = "")
     names(state_labels) <- winprob$state
-    g <- ggplot(data = pred[pred$state %in% state_abbr_vec,])  
+    g <- ggplot(data = pred[pred$state %in% state_abbr_vec & pred$t >= from,])  
     if (show_sim == TRUE){
         for (i in 1:100){
             g <- g + geom_line(data = data.frame(p = as.vector(p_subset[i,,state_abbr_vec]), 
@@ -50,7 +50,7 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
                                                  state = rep(state_abbr_vec, each = length(dates)),
                                                  state_pos = rep(factor(state_abbr_vec, 
                                                                         levels = state_abbr_vec[state_ordering]), 
-                                                                 each = length(dates))), 
+                                                                 each = length(dates))) %>% filter(t >= from), 
                                aes(x = t, y = 100*p), 
                                col = "blue", alpha = .2, size = .1)
         }
@@ -65,18 +65,18 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE){
                    color = "black", linetype = "dotted",
                    aes(yintercept=prior)) +
         geom_vline(xintercept = as.numeric(election_day)) +
-        geom_point(data = df[df$state %in% state_abbr_vec,],
+        geom_point(data = df[df$state %in% state_abbr_vec & df$t >= from,],
                    aes(x = t, y = 100*p_clinton, alpha = -sqrt(p_clinton*(1-p_clinton)/n_respondents)),
                    size = 1/min(2, 2+length(state_abbr_vec)))  + 
         scale_alpha(range = c(.1, 1)) +
-        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t <= max(all_t),], 
+        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t <= max(all_t) & pred$t >= from,], 
                   aes(x = t, y = 100*p), color = "white", size = ifelse(length(state_abbr_vec) <= 2, 1, .8)) +
-        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t <= max(all_t),], 
+        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t <= max(all_t) & pred$t >= from,], 
                   aes(x = t, y = 100*p), color = "darkblue", size = ifelse(length(state_abbr_vec) <= 2, .8, .6)) +
-        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t >= max(all_t),], 
+        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t >= max(all_t) & pred$t >= from,], 
                   aes(x = t, y = 100*p), color = "white", linetype = "solid", 
                   size = ifelse(length(state_abbr_vec) <= 2, .8, .6), alpha = .5) +
-        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t >= max(all_t),], 
+        geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t >= max(all_t) & pred$t >= from,], 
                   aes(x = t, y = 100*p), color = "darkblue", linetype = "11", 
                   size = ifelse(length(state_abbr_vec) <= 2, .8, .6)) +
         guides(color = FALSE, alpha = FALSE, linetype = FALSE) + 
@@ -260,7 +260,7 @@ table_pred$diffprior_now <-table_pred$p_now - table_pred$prior
 # Note: kable will not highlight rows/cells; using datatable (DT package) instead.
 
 datatable(table_pred[,c("state_name", "number_polls", "prior", "diffprior_now", "p_now", "p_forecast", "clinton_win")], 
-          colnames = c("State", "Number of Polls", "Prior", "Current - Prior", "Current Score", "Forecast Score", "Pr(Clinton Wins)"),
+          colnames = c("State", "Number of Polls", "Prior", "Current - Prior Difference", "Current Score", "Forecast Score", "Pr(Clinton Wins)"),
           rownames = FALSE,
           options = list(dom = c('f t'), pageLength = nrow(table_pred))) %>% 
     formatStyle('clinton_win', 
