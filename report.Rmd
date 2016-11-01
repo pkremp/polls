@@ -18,11 +18,11 @@ knitr::read_chunk('graphs.R')
 
 
 
-Last update: `r format(time_lastrun, format = "%A, %B %d, %H:%M")`.
+Last update: `r format(time_lastrun, format = "%A, %B %d, %I:%M%p")`.
 
 ---
 
-This is a Stan implementation of Drew Linzer's dynamic Bayesian election forecasting model, with some tweaks to incorporate national poll data, pollster house effects, correlated priors on state-by-state election results and comovement of public opinion across states. 
+This is a Stan implementation of Drew Linzer's dynamic Bayesian election forecasting model, with some tweaks to incorporate national poll data, pollster house effects, correlated priors on state-by-state election results and correlated polling errors. 
 
 For more details on the original model: 
 
@@ -49,7 +49,6 @@ Note: the model does not account for the specific electoral vote allocation rule
 
 This graph shows Hillary Clinton's share of the Clinton and Trump national vote, derived from the weighted average of latent state-by-state vote intentions (using the same state weights as in the 2012 presidential election, adjusted for state adult population growth between 2011 and 2015). In the model (described below), national vote intentions are defined as:
 
-This graph shows the posterior median (blue line) and 90% credible interval (light blue area) of Hillary Clinton's share of the two-party national vote, derived from the weighted average of latent state-by-state vote intentions (using the same state weights as in the 2012 presidential election, adjusted for state adult population growth between 2011 and 2015). 
 $$\pi^{clinton}[t, US] = \sum_{s \in S} \omega_s \cdot \textrm{logit}^{-1} (\mu_a[t] + \mu_b[t, s])$$
 
 The thick line represents the median of posterior distribution of national vote intentions; the light blue area shows the 90% credible interval. The thin blue lines represent 100 draws from the posterior distribution.
@@ -158,9 +157,9 @@ The model treats national and state polls differently.
 
 If poll $i$ is a state poll, I use a day/state/pollster multilevel model:
 
-$$\textrm{logit} (\pi^{clinton}_i) = \mu_a[t_i] + \mu_b[t_i, s_i] + \mu_c[p_i] + u_i$$
+$$\textrm{logit} (\pi^{clinton}_i) = \mu_a[t_i] + \mu_b[t_i, s_i] + \mu_c[p_i] + u_i + e[s_i]$$
 
-What this model does is simply to decompose the log-odds of reported vote intentions towards Hillary Clinton $\pi^{clinton}_i$ into a national component, shared across all states ($\mu_a$), a state-specific component ($\mu_b$), a pollster house effect ($\mu_c$), and a measurement noise term ($u$)
+What this model does is simply to decompose the log-odds of reported vote intentions towards Hillary Clinton $\pi^{clinton}_i$ into a national component, shared across all states ($\mu_a$), a state-specific component ($\mu_b$), a pollster house effect ($\mu_c$), a poll-specific measurement noise term ($u$), and a polling error term ($e$) shared across all polls of the state (the higher $e$, the more polls overestimate Hillary Clinton's true score).
 
 On the day of the last available poll $t_{last}$, the national component $\mu_a[t_{last}]$ is set to zero, so that the predicted share of the Clinton vote in state $s$ (net of pollster house effects and measurement noise) after that date and until election day $T$ is: 
 
@@ -176,7 +175,7 @@ where $w_t$ is the week of day $t$.
 
 If poll $i$ is a national poll, I use the same multilevel approach (with random intercepts for pollster house effects $\mu_c$) but I add a little tweak: the share of the Clinton vote in a national poll should also reflect the weighted average of state-by-state scores at the time of the poll. I model the share of vote intentions in national polls in the following way:
 
-$$\textrm{logit} (\pi^{clinton}_i) =  \textrm{logit}\left( \sum_{s \in \{1 \dots S\}} \omega_s \cdot \textrm{logit}^{-1} (\mu_a[t_i] + \mu_b^{weekly}[w_{t_i}, s_i]) \right) + \alpha + \mu_c[p_i] + u_i$$
+$$\textrm{logit} (\pi^{clinton}_i) =  \textrm{logit}\left( \sum_{s \in \{1 \dots S\}} \omega_s \cdot \textrm{logit}^{-1} (\mu_a[t_i] + \mu_b^{weekly}[w_{t_i}, s] + e[s]) \right) + \alpha + \mu_c[p_i] + u_i$$
 
 where $\omega_s$ represents the share of state $s$ in the total votes of the set of polled states $1 \dots S$ (based on 2012 turnout numbers adjusted for adult population growth in each state between 2011 and 2015). The $\alpha$ parameter corrects for possible discrepancies between national polls and the weighted average of state polls. Possible sources of discrepancies may include: 
 
@@ -279,6 +278,16 @@ The measurement noise term $u_i$ is normally distributed around zero, with stand
 
 $$\sigma_u^{national} \sim \textrm{Uniform}(0, 0.1)$$
 $$\sigma_u^{state} \sim \textrm{Uniform}(0, 0.1)$$
+
+### Polling error
+
+To account for the possibility that polls might be off on average, even after adjusting for pollster house effects, the model includes a polling error term shared by all polls of the same state $e[s]$. For example, the presence of an unexpectedly large share of Trump voters (undetected by the polls) in a given state would translate into large positive $e$ values for that state. This polling error will remain unknown until election day; however it can be included in the form of an unidentified random parameter in the likelihood of the model, that increases the uncertainty in the posterior distribution of $\mu_a$ and $\mu_b$. 
+
+Because I expect polling errors to be correlated across states, I use a multivariate normal distribution: 
+
+$$e \sim \textrm{Multivariate Normal}(0, \mathbf{\Sigma_e})$$
+
+To construct $\mathbf{\Sigma_e}$, I set the variance to $0.04^2$ and the covariance to 0.00175; this corresponds to a standard deviation of about 1 percentage point for a state in which Clinton's score is close to 50% (or a 95% certainty that polls are not off by more than 2 percentage points either way); and a 0.7 correlation of polling errors across states.
 
 ---
 

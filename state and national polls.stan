@@ -23,14 +23,19 @@ data{
     vector [S] mu_b_prior;
     matrix [S-1, S-1] sigma_mu_b_end;
     matrix [S-1, S-1] sigma_walk_b_forecast;
+    matrix [S-1, S-1] sigma_poll_error;
 }
 
 transformed data{
     matrix [S-1, S-1] chol_sigma_walk_b_forecast;
     matrix [S-1, S-1] chol_sigma_mu_b_end;
+    matrix [S-1, S-1] chol_sigma_poll_error;
+    vector [S-1] zero_vec;
     // Cholesky decompositions to speed up sampling from multivariate normal.
     chol_sigma_walk_b_forecast = cholesky_decompose(sigma_walk_b_forecast);
     chol_sigma_mu_b_end = cholesky_decompose(sigma_mu_b_end);
+    chol_sigma_poll_error = cholesky_decompose(sigma_poll_error);
+    for (state in 1:(S-1)) zero_vec[state] = 0;
 }
 
 parameters{
@@ -38,13 +43,14 @@ parameters{
     matrix[W-1,S] delta_b;
     vector[S] mu_b_end;
     vector[P] mu_c;
-    real alpha;
+    real alpha_01;
     real<lower = 0, upper = 0.2> sigma_c;
     real u[N];
     real<lower = 0, upper = 0.1> sigma_u_national;
     real<lower = 0, upper = 0.1> sigma_u_state;
     real<lower = 0, upper = 0.05> sigma_walk_a_past;
     real<lower = 0, upper = 0.05> sigma_walk_b_past;
+    vector[S-1] poll_error_01;
 }
 
 transformed parameters{
@@ -53,7 +59,11 @@ transformed parameters{
     matrix[W,S] mu_b;
     vector[T_unique] average_states;
     matrix[T_unique , S-1] matrix_inv_logit_mu_ab;
+    vector[S-1] poll_error;
     real mu_a_t;
+    real alpha;
+    alpha = alpha_prior + alpha_01*0.2;
+    poll_error = chol_sigma_poll_error * to_vector(poll_error_01);
     # Calculating mu_a
     mu_a[last_poll_T] = 0;
     for (i in 1:(last_poll_T-1)){
@@ -75,7 +85,8 @@ transformed parameters{
     for(i in 1:T_unique){
         mu_a_t = mu_a[unique_ts[i]]; 
         for (state in 1:(S-1)){
-            matrix_inv_logit_mu_ab[i, state] = inv_logit(mu_a_t + mu_b[unique_ws[i], state+1]);
+            # Careful here: state indices for poll_error are off by 1 relative to mu_b state indices.
+            matrix_inv_logit_mu_ab[i, state] = inv_logit(mu_a_t + mu_b[unique_ws[i], state+1] + poll_error[state]);
         } 
     }
     average_states =  matrix_inv_logit_mu_ab * state_weights[2:S];
@@ -94,7 +105,8 @@ transformed parameters{
             # For state polls:
             # p_clinton_hat is a function of national and state parameters **mu_a**, **mu_b**
             # and pollster house effects **mu_c**
-            logit_clinton_hat[i] = mu_a[t[i]] + mu_b[w[i], s[i]] + sigma_c*mu_c[p[i]] + sigma_u_state*u[i];
+            logit_clinton_hat[i] = mu_a[t[i]] + mu_b[w[i], s[i]] + sigma_c*mu_c[p[i]] + sigma_u_state*u[i] 
+                                 + poll_error[s[i]-1];
         }
     }
 }
@@ -110,9 +122,11 @@ model{
         delta_b[W - wk, 2:S] ~ normal(0, 1);
     }
     # Prior for the difference between national and weighted average of state parameters:
-    alpha ~ normal(alpha_prior, 0.2);
-    # Measurement error (one value per poll);
+    alpha_01 ~ normal(0, 1);
+    # Measurement error (one value per poll)
     u ~ normal(0, 1);
+    # Polling error (one value per state; variance and correlation set by sigma_poll_error matrix)
+    poll_error_01 ~ normal(0, 1);
     # Pollster house effects
     mu_c ~ normal(0, 1);
     # Likelihood of the model:
@@ -126,9 +140,30 @@ generated quantities{
     for (state in 2:S){
         // Backward estimates (daily)
         for (date in 1:last_poll_T){
-            predicted_score[date, state] = // Just a little bit of linear interpolation between weeks
-                       inv_logit(mu_a[date] + (1.0-day_of_week[date]/7.0)*mu_b[week[date], state]
-                                            +     (day_of_week[date]/7.0)*mu_b[min(week[date]+1, W), state]);
+            // Linear interpolation of mu_b values between previous and current week, 
+            // or current and next week
+            // Using the following weights, depending on day_of_week:
+            //         w-1    w       w+1
+            // 0 Sun   3/7    4/7  
+            // 1 Mon   2/7    5/7  
+            // 2 Tue   1/7    6/7  
+            // 3 Wed   0      7/7  
+            // 4 Thu          6/7    1/7 
+            // 5 Fri          5/7    2/7 
+            // 6 Sat          4/7    3/7 
+            if (day_of_week[date] <= 3){ // 0=Sun, 1=Mon, 2=Tue, 3=Wed
+                predicted_score[date, state] = 
+                           inv_logit(mu_a[date] + (1.0-(4+day_of_week[date])/7.0)*mu_b[max(week[date]-1, 1), state]
+                                                +     ((4+day_of_week[date])/7.0)*mu_b[week[date], state]);
+            }
+            else{ // 4=Thu, 5=Fri, 6=Sat
+                predicted_score[date, state] = // Linear interpolation between current and next week
+                           inv_logit(mu_a[date] +     ((10-day_of_week[date])/7.0)*mu_b[week[date], state]
+                                                + (1.0-(10-day_of_week[date])/7.0)*mu_b[min(week[date]+1, W), state]);
+            }
+            // predicted_score[date, state] = // Just a little bit of linear interpolation between weeks
+            //            inv_logit(mu_a[date] + (1.0-day_of_week[date]/7.0)*mu_b[week[date], state]
+            //                                 +     (day_of_week[date]/7.0)*mu_b[min(week[date]+1, W), state]);
         }
         // Forward estimates (weekly)
         for (date in (last_poll_T+1):(last_poll_T + W - last_poll_W)){

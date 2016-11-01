@@ -247,6 +247,10 @@ alpha_prior <- log(states2012$national_score[1]/score_among_polled)
 
 sigma_mu_b_end <-cov_matrix(n = length(mu_b_prior) - 1, sigma2 = 1/20, rho = 0.5)
 sigma_walk_b_forecast <- cov_matrix(length(mu_b_prior) - 1, 7*(0.015)^2, 0.75)
+# sigma_poll_error <- cov_matrix(length(mu_b_prior) - 1, 0.08^2, .7) # About 0.08 = 2% sd on inv_logit scale; 0.04 = 1%
+# sigma_poll_error <- cov_matrix(length(mu_b_prior) - 1, 0.05^2, .7) # = 1.25% sd = 1% mean absolute deviation (see: http://researchdmr.com/ProbabilityTotalError.pdf)
+
+sigma_poll_error <- cov_matrix(length(mu_b_prior) - 1, 0.04^2, .7) # about 1% sd.
 
 ##################################################
 # Passing the data to Stan and running the model #
@@ -275,6 +279,7 @@ out <- stan("state and national polls.stan",
                  mu_b_prior =  mu_b_prior,
                  sigma_mu_b_end = sigma_mu_b_end,
                  sigma_walk_b_forecast = sigma_walk_b_forecast,
+                 sigma_poll_error = sigma_poll_error,
                  week = as.integer(as.factor(floor_date(all_t, unit="week"))),
                  day_of_week = as.numeric(format(all_t, format = "%w"))),
      chains = 4, iter = 2000)
@@ -282,7 +287,7 @@ out <- stan("state and national polls.stan",
 stan_summary <- capture.output(print(out, pars = c("alpha", "sigma_c", 
                                                    "sigma_u_state", "sigma_u_national",
                                                    "sigma_walk_a_past", "sigma_walk_b_past",
-                                                   paste("mu_b[31,", as.character(2:max(df$index_s)),"]", 
+                                                   paste("mu_b[33,", as.character(2:max(df$index_s)),"]", 
                                                          sep =""))))
 stan_summary
 
@@ -301,6 +306,7 @@ sigma_walk_b_past <- rstan::extract(out, pars = "sigma_walk_b_past")[[1]]
 sigma_walk_a_past <- rstan::extract(out, pars = "sigma_walk_a_past")[[1]]
 sigma_u_state <- rstan::extract(out, pars = "sigma_u_state")[[1]]
 sigma_u_national <- rstan::extract(out, pars = "sigma_u_national")[[1]]
+poll_error <- rstan::extract(out, pars = "poll_error")[[1]]
 
 dates <- sort(c(all_t, unique(setdiff(all_weeks_until_election, all_weeks))))
 dates <- c(dates[-length(dates)], election_day) # For convenience: the last date will be named Nov 8 (not Nov 6, when the week begins).
@@ -311,7 +317,7 @@ dimnames(mu_b) <- list(1:dim(mu_b)[1],
                        all_polled_states)
 dimnames(mu_c) <- list(1:nrow(mu_c), all_pollsters)
 
-hist(apply(p[,as.character(election_day),-1], 1, function(vec) cor(vec, inv_logit(mu_b_prior[-1]))))
+# hist(apply(p[,as.character(election_day),-1], 1, function(vec) cor(vec, inv_logit(mu_b_prior[-1]))))
 
 pred <- data.frame(t = rep(dates, length(all_polled_states)),
                    state = as.character(rep(all_polled_states, each = length(dates))),
