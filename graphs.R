@@ -67,7 +67,7 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE, from = start_date){
         geom_vline(xintercept = as.numeric(election_day)) +
         geom_point(data = df[df$state %in% state_abbr_vec & df$t >= from,],
                    aes(x = t, y = 100*p_clinton, alpha = -sqrt(p_clinton*(1-p_clinton)/n_respondents)),
-                   size = 1/min(2, 2+length(state_abbr_vec)))  + 
+                   size = 1/min(2, 2+length(state_abbr_vec)))  +
         scale_alpha(range = c(.1, 1)) +
         geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t <= max(all_t) & pred$t >= from,], 
                   aes(x = t, y = 100*p), color = "white", size = ifelse(length(state_abbr_vec) <= 2, 1, .8)) +

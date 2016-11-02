@@ -18,7 +18,7 @@ knitr::read_chunk('graphs.R')
 
 
 
-Last update: `r format(time_lastrun, format = "%A, %B %d, %I:%M%p")`.
+Last update: `r paste(format(time_lastrun, format = "%A, %B %e, %l:%M%P", tz = "US/Eastern"), "ET") %>% gsub("  ", " ", .)`.
 
 ---
 
