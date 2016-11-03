@@ -7,6 +7,10 @@ output:
     highlight: tango
 ---
 
+Twitter: [`@pakremp`](http://twitter.com/pakremp)
+
+---
+
 ```{r echo=FALSE, message=FALSE}
 setwd("~/GitHub/polls")
 knitr::read_chunk('graphs.R')
@@ -261,7 +265,7 @@ Each pollster $p$ can be biased towards Clinton or Trump:
 
 $$\mu_c[p] \sim \textrm{Normal}(0, \sigma_c)$$
 
-$$\sigma_c \sim \textrm{Uniform}(0, 0.2)$$
+$$\sigma_c \sim \textrm{Uniform}(0, 0.1)$$
 
 ### Discrepancy between national polls and the average of state polls
 
@@ -301,7 +305,7 @@ knitr::kable(last_polls, col.names = c("Entry Date", "Source", "State", "% Clint
 # Convergence checks 
 
 
-With 4 chains and 2000 iterations (the first 1000 iterations of each chain are discarded), the model runs in about 10 minutes on my 4-core Intel i7 MacBookPro.
+With 4 chains and 2000 iterations (the first 1000 iterations of each chain are discarded), the model runs in less than 15 minutes on my 4-core Intel i7 MacBookPro.
 
 ```{r echo=FALSE}
 <<model_checks>>
