@@ -282,7 +282,7 @@ out <- stan("state and national polls.stan",
                         sigma_walk_b_forecast = sigma_walk_b_forecast,
                         sigma_poll_error = sigma_poll_error,
                         week = as.integer(as.factor(floor_date(all_t, unit="week"))),
-                        day_of_week = as.numeric(format(all_t_until_election, format = "%w"))),
+                        day_of_week = as.numeric(format(all_t, format = "%w"))),
             chains = 4, iter = 2000)
 
 stan_summary <- capture.output(print(out, pars = c("alpha", "sigma_c", 
