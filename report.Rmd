@@ -11,6 +11,8 @@ Twitter: [`@pakremp`](http://twitter.com/pakremp)
 
 ---
 
+
+
 ```{r echo=FALSE, message=FALSE}
 setwd("~/GitHub/polls")
 knitr::read_chunk('graphs.R')
@@ -49,6 +51,7 @@ The Stan and R files are available [here](http://github.com/pkremp/polls).
 
 Note: the model does not account for the specific electoral vote allocation rules in place in Maine and Nebraska.
 
+
 # National Vote 
 
 This graph shows Hillary Clinton's share of the Clinton and Trump national vote, derived from the weighted average of latent state-by-state vote intentions (using the same state weights as in the 2012 presidential election, adjusted for state adult population growth between 2011 and 2015). In the model (described below), national vote intentions are defined as:
@@ -69,6 +72,8 @@ Each national poll (raw numbers, unadjusted for pollster house effects) is repre
 <<plot_national>>
 ```
 
+
+
 # State Vote 
 
 The following graphs show vote intention by state (with 100 draws from the posterior distribution represented as thin blue lines):
@@ -83,6 +88,7 @@ States are sorted by predicted Clinton score on election day.
 
 # Current Vote Intentions and Forecast By State
 
+
 ```{r echo=FALSE, message=FALSE}
 <<table_predictions>>
 ```
@@ -92,6 +98,7 @@ States are sorted by predicted Clinton score on election day.
 ```{r echo=FALSE, message=FALSE, fig.width = 5, fig.height = 8}
 <<plot_state_probabilities>>
 ```
+
 
 # Map
 
