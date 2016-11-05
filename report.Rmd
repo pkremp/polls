@@ -45,7 +45,7 @@ The Stan and R files are available [here](http://github.com/pkremp/polls).
 
 # Electoral College 
 
-```{r echo=FALSE, message=FALSE}
+```{r echo=FALSE, message=FALSE, fig.align='center'}
 <<plot_ev>>
 ```
 
@@ -68,7 +68,7 @@ Each national poll (raw numbers, unadjusted for pollster house effects) is repre
 `r round(((inv_logit(logit(pred$p[pred$t == all_t[length(all_t)]  & pred$state == "--"])) - inv_logit(logit(pred$p[pred$t == all_t[length(all_t)] & pred$state == "--"]) + median(alpha))))*100, 1)` point below the level that would be consistent with the latent state-by-state vote intentions.
 -->
 
-```{r echo=FALSE, message=FALSE}
+```{r echo=FALSE, message=FALSE, fig.align='center'}
 <<plot_national>>
 ```
 
@@ -82,7 +82,7 @@ $$\pi^{clinton}[t,s] = \textrm{logit}^{-1} (\mu_a[t] + \mu_b[t, s])$$
 
 States are sorted by predicted Clinton score on election day.
 
-```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 5}
+```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 5, fig.align='center'}
 <<plot_states>>
 ```
 
@@ -95,20 +95,20 @@ States are sorted by predicted Clinton score on election day.
 
 # State-by-State Probabilities 
 
-```{r echo=FALSE, message=FALSE, fig.width = 5, fig.height = 8}
+```{r echo=FALSE, message=FALSE, fig.width = 5, fig.height = 8, fig.align='center'}
 <<plot_state_probabilities>>
 ```
 
 
 # Map
 
-```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4}
+```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4, fig.align='center'}
 <<map>>
 ```
 
 # Pollster House Effects
 
-```{r echo=FALSE, message=FALSE}
+```{r echo=FALSE, message=FALSE, fig.align='center'}
 <<plot_house_effects>>
 ```
 
@@ -126,7 +126,7 @@ Most pro-Trump polls:
 
 # Discrepancy between national polls and weighted average of state polls
 
-```{r echo=FALSE, message=FALSE}
+```{r echo=FALSE, message=FALSE, fig.align='center'}
 <<alpha>>
 ```
 
@@ -208,7 +208,7 @@ Both $\sigma_a$ and $\sigma_b$ are given uniform priors between 0 and 0.05.
 
 Their posterior marginal distributions are shown below. The median day-to-day total standard deviation of vote intentions is about `r round(sd(inv_logit(rnorm(1e4,0, sqrt(median(sigma_walk_a_past)^2 + median(sigma_walk_b_past)^2))))*100, 1)`%. The model seems to find that most of the changes in latent vote intentions are attributable to national swings rather than state-specific swings (national swings account on average for about `r round(median(sigma_walk_a_past)^2/(median(sigma_walk_a_past)^2 + median(sigma_walk_b_past)^2),2)*100`% of the total day-to-day variance). 
 
-```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4}
+```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4, fig.align='center'}
 <<sigma_walk>>
 ```
 
@@ -222,11 +222,11 @@ I use a multivariate normal distribution for the prior of the final outcome. Its
 
 $$\mu_b[T, 1 \dots S] \sim \textrm{Multivariate Normal}(\textrm{logit} (0.486 + \delta_{1 \dots S}), \mathbf{\Sigma})$$
 
-```{r echo=FALSE, message=FALSE}
+```{r echo=FALSE, message=FALSE, fig.align='center'}
 <<priors>>
 ```
 
-```{r echo=FALSE, message=FALSE}
+```{r echo=FALSE, message=FALSE, fig.align='center'}
 <<correlation_states>>
 ```
 
@@ -237,13 +237,13 @@ For the covariance matrix $\mathbf{\Sigma}$, I set the variance to `r sigma_mu_b
 
 * State scores are also expected to be correlated with each other. For example, according to the prior (before looking at polling data), there is only a `r round(mean(m[,"TX"] > m[,"VA"])*100, 1)`% chance that Hillary Clinton will perform worse in Virginia than in Texas. If the priors were independent, this unlikely event could happen with a `r round(mean(m0[,"TX"] > m0[,"VA"])*100)`% probability.
 
-```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4}
+```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4, fig.align='center'}
 <<TX-VA-example>>
 ```
 
 The covariance matrix implies that the correlation between the 2012 state scores and 2016 state priors is expected to be about `r round(median(rho),2)` (as opposed to `r round(median(rho0),2)` if covariances were set to zero). The simulated distribution of correlations between state priors and 2012 scores is in line with observed correlations of state scores with previous election results since 1988 [http://election.princeton.edu/2016/06/02/the-realignment-myth/].
 
-```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4}
+```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4, fig.align='center'}
 <<correlation_states_graph>>
 ```
 
