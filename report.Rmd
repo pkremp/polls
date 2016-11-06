@@ -11,7 +11,7 @@ Twitter: [`@pakremp`](http://twitter.com/pakremp)
 
 ---
 
-NEW: [What is the probability that your vote will decide the election?](http://rawgit.com/pkremp/polls/master/pr_decisive_vote.html) (with Andrew Gelman).
+NEW: [What is the probability that your vote will decide the election?](http://rawgit.com/pkremp/polls/master/pr_decisive_vote.html) (with Andrew Gelman). R code available [here](https://github.com/pkremp/polls/blob/master/pr_decisive_vote.R).
 
 ---
 
