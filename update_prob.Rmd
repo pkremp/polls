@@ -16,7 +16,7 @@ Why? Vote intentions are correlated across states. Results from just a handful o
 
 # Enter `update_prob()`
 
-I wrote a very simple function in R, `update_prob()`, that does just that. It takes as input a set of events that you want to condition on (e.g. Clinton or Trump already won a set of states; or the two-way final score in a given state falls within a certain interval), and it displays out the updated forecast by drawing from the conditional distribution. 
+I wrote a very simple function in R, `update_prob()`, that performs this calculation. It takes as input a set of events that you want to condition on (e.g. Clinton or Trump already won a set of states; or the two-way final score in a given state falls within a certain interval), and it displays the updated forecast by drawing from the conditional distribution. 
 
 You can use it on election night, or before if you want to check how the forecast would change under various scenarios.
 
