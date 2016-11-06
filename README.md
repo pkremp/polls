@@ -4,6 +4,6 @@ The model is presented briefly at the end of [`report.html`](https://rawgit.com/
 
 `runmodel.R` downloads poll data from the HuffPost Pollster API, processes the data, and runs the Stan model in `state and national polls.stan`.
 
-`report.Rmd` is a Rmarkdown document used to automatically generate the graphs/tables/maps in [`report.html`](https://rawgit.com/pkremp/polls/master/report.html) and relies on `graphs.R`.
+`report.Rmd` is a Rmarkdown document used to automatically generate the graphs/tables/maps in [`report.html`](http://pkremp.github.io/report.html) and relies on `graphs.R`.
 
 

@@ -437,6 +437,7 @@ last_polls <- df %>%
            N=n_respondents) %>% 
     select(entry_date, pollster, state, p_clinton, p_trump, N)
 
+save(list = c("sim_forecast", "ev_state"), file = "last_sim.RData")
 
 rm(out)
 rm(p)

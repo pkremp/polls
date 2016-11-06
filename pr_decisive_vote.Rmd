@@ -11,7 +11,7 @@ Twitter: [`@pakremp`](http://twitter.com/pakremp)
 
 ---
 
-The probability that an individual voter would end up determining the outcome of the election is extremely low. But it varies dramatically across states. We use the posterior distribution of the [state-by-state vote intentions forecast](http://rawgit.com/pkremp/polls/master/report.html) on election day to replicate the calculation detailed in Gelman, Silver and Edlin's (2012) _Economic Inquiry_ article, ["What is the probability that your vote will make a difference?"](http://www.stat.columbia.edu/~gelman/research/published/probdecisive2.pdf). 
+The probability that an individual voter would end up determining the outcome of the election is extremely low. But it varies dramatically across states. We use the posterior distribution of the [state-by-state vote intentions forecast](http://pkremp.github.io/report.html) on election day to replicate the calculation detailed in Gelman, Silver and Edlin's (2012) _Economic Inquiry_ article, ["What is the probability that your vote will make a difference?"](http://www.stat.columbia.edu/~gelman/research/published/probdecisive2.pdf). 
 
 The R code is available [here](https://github.com/pkremp/polls/blob/master/pr_decisive_vote.R).
 
