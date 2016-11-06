@@ -1,5 +1,5 @@
 ---
-title: Updating the Forecast on Election Night
+title: Updating the Forecast on Election Night with R
 author: "Pierre-Antoine Kremp"
 output: 
   html_document:
