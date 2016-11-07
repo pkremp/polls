@@ -45,8 +45,12 @@ draw_samples <- function(clinton_states = NULL, trump_states = NULL, states = NU
         colnames(proposals) <- names(mu)
         if (!is.null(clinton_states)) proposals[which(proposals[,clinton_states] < .5)] <- NA
         if (!is.null(  trump_states)) proposals[which(proposals[,  trump_states] > .5)] <- NA
-        if (!is.null(        states)) proposals[which(proposals[,        states] > upper_clinton | 
-                                                      proposals[,        states] < lower_clinton)] <- NA
+        if (!is.null(        states)){
+            for (s in states){
+                proposals[which(proposals[, s] > upper_clinton[s] | 
+                                proposals[, s] < lower_clinton[s])] <- NA
+            }
+        }
         reject <- apply(proposals, 1, function(x) any(is.na(x)))
         sim <- rbind(sim, proposals[!reject,])
         if (nrow(sim) < target_nsim & nrow(sim)/(nrow(proposals)*n) < 1-99.99/100){
