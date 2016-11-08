@@ -70,6 +70,17 @@ update_prob(clinton_states = c("NH"),
                                        "NV" = c(51, 54))) 
 ```
 
+We can also get the updated probabilities of victory by state.
+
+```{r echo = TRUE} 
+update_prob(clinton_states = c("NH"), 
+            trump_states   = c("OH", "PA"), 
+            clinton_scores_list = list("FL" = c(49, 52), 
+                                       "NV" = c(51, 54)),
+            show_all_states = TRUE) 
+```
+
+
 # How to use it
 
 To use `update_prob()`, you only need 2 files, available from my [GitHub repository](http://github.com/pkremp/polls): 

@@ -159,35 +159,52 @@ $(document).ready(function () {
 <p>Here are just a few examples, using hypothetical and somewhat far-fetched cases:</p>
 <p>If we call <code>update_prob()</code> without adding any new information, the function returns the baseline prediction from the model:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">update_prob</span>()</code></pre></div>
-<pre><code>## Pr(Clinton wins the electoral college) = 89%
+<pre><code>## Pr(Clinton wins the electoral college) = 90%
 ## [nsim = 100000; se = 0.1%]</code></pre>
 <p>Now imagine that New Hampshire gets called for Clinton; her chance of winning the election naturally increases:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">update_prob</span>(<span class="dt">clinton_states =</span> <span class="kw">c</span>(<span class="st">&quot;NH&quot;</span>))</code></pre></div>
 <pre><code>## Pr(Clinton wins the electoral college) = 93%
-## [nsim = 93987; se = 0.1%]</code></pre>
+## [nsim = 95626; se = 0.1%]</code></pre>
 <p>What happens if Trump wins Pennsylvania? (An unlikely outcome here, since the model sees Pennsylvania as more favorable to Clinton than New Hampshire). Things start looking bad for Clinton:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">update_prob</span>(<span class="dt">clinton_states =</span> <span class="kw">c</span>(<span class="st">&quot;NH&quot;</span>), 
             <span class="dt">trump_states   =</span> <span class="kw">c</span>(<span class="st">&quot;PA&quot;</span>)) </code></pre></div>
-<pre><code>## Pr(Clinton wins the electoral college) = 19%
-## [nsim = 3459; se = 0.7%]</code></pre>
+<pre><code>## Pr(Clinton wins the electoral college) = 25%
+## [nsim = 4071; se = 0.7%]</code></pre>
 <p>If Ohio falls in the Trump column as well, we don’t actually get much new information (Ohio is more pro-Trump than Pennsylvania anyway):</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">update_prob</span>(<span class="dt">clinton_states =</span> <span class="kw">c</span>(<span class="st">&quot;NH&quot;</span>), 
             <span class="dt">trump_states   =</span> <span class="kw">c</span>(<span class="st">&quot;PA&quot;</span>, <span class="st">&quot;OH&quot;</span>)) </code></pre></div>
-<pre><code>## Pr(Clinton wins the electoral college) = 18%
-## [nsim = 3372; se = 0.7%]</code></pre>
+<pre><code>## Pr(Clinton wins the electoral college) = 22%
+## [nsim = 3949; se = 0.7%]</code></pre>
 <p>It is also possible to plug in score intervals: for example: we don’t know who is winning Florida for sure, but it looks like Clinton and Trump are close, with perhaps a slight lead for Clinton… Let’s put the final score for Clinton somewhere between 49 and 52% in that state (taking her score in a two-way race, ignoring 3rd party candidates):</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">update_prob</span>(<span class="dt">clinton_states =</span> <span class="kw">c</span>(<span class="st">&quot;NH&quot;</span>), 
             <span class="dt">trump_states   =</span> <span class="kw">c</span>(<span class="st">&quot;OH&quot;</span>, <span class="st">&quot;PA&quot;</span>), 
             <span class="dt">clinton_scores_list =</span> <span class="kw">list</span>(<span class="st">&quot;FL&quot;</span> =<span class="st"> </span><span class="kw">c</span>(<span class="dv">49</span>, <span class="dv">52</span>))) </code></pre></div>
-<pre><code>## Pr(Clinton wins the electoral college) = 35%
-## [nsim = 1646; se = 1.2%]</code></pre>
+<pre><code>## Pr(Clinton wins the electoral college) = 37%
+## [nsim = 2330; se = 1%]</code></pre>
 <p>We can add multiple score conditions: let’s say Nevada is in the Clinton column and her score there is somewhere between 51 and 54%.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">update_prob</span>(<span class="dt">clinton_states =</span> <span class="kw">c</span>(<span class="st">&quot;NH&quot;</span>), 
             <span class="dt">trump_states   =</span> <span class="kw">c</span>(<span class="st">&quot;OH&quot;</span>, <span class="st">&quot;PA&quot;</span>), 
             <span class="dt">clinton_scores_list =</span> <span class="kw">list</span>(<span class="st">&quot;FL&quot;</span> =<span class="st"> </span><span class="kw">c</span>(<span class="dv">49</span>, <span class="dv">52</span>), 
                                        <span class="st">&quot;NV&quot;</span> =<span class="st"> </span><span class="kw">c</span>(<span class="dv">51</span>, <span class="dv">54</span>))) </code></pre></div>
-<pre><code>## Pr(Clinton wins the electoral college) = 71%
-## [nsim = 1049; se = 1.4%]</code></pre>
+<pre><code>## Pr(Clinton wins the electoral college) = 74%
+## [nsim = 1113; se = 1.3%]</code></pre>
+<p>We can also get the updated probabilities of victory by state.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">update_prob</span>(<span class="dt">clinton_states =</span> <span class="kw">c</span>(<span class="st">&quot;NH&quot;</span>), 
+            <span class="dt">trump_states   =</span> <span class="kw">c</span>(<span class="st">&quot;OH&quot;</span>, <span class="st">&quot;PA&quot;</span>), 
+            <span class="dt">clinton_scores_list =</span> <span class="kw">list</span>(<span class="st">&quot;FL&quot;</span> =<span class="st"> </span><span class="kw">c</span>(<span class="dv">49</span>, <span class="dv">52</span>), 
+                                       <span class="st">&quot;NV&quot;</span> =<span class="st"> </span><span class="kw">c</span>(<span class="dv">51</span>, <span class="dv">54</span>)),
+            <span class="dt">show_all_states =</span> <span class="ot">TRUE</span>) </code></pre></div>
+<pre><code>## Pr(Clinton wins) by state, in %:
+##      AK AL AR AZ  CA CO  CT  DE FL GA  HI IA ID  IL IN KS KY LA  MA  MD
+## [1,]  0  0  0  0 100 95 100 100 61  0 100  0  0 100  0  0  0  0 100 100
+##       ME MI  MN MO MS MT NC ND NE  NH  NJ NM  NV  NY OH OK  OR PA  RI SC
+## [1,] 100 89 100  0  0  0 50  0  0 100 100 99 100 100  0  0 100  0 100  0
+##      SD TN TX UT VA  VT  WA WI WV WY ME1 ME2  DC NE1 NE2 NE3
+## [1,]  0  0  0  0 99 100 100 98  0  0 100  61 100   0   1   0
+## --------
+## Pr(Clinton wins the electoral college) = 73%
+## [nsim = 1062; se = 1.4%]
+## --------</code></pre>
 </div>
 <div id="how-to-use-it" class="section level1">
 <h1>How to use it</h1>
