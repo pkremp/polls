@@ -62,9 +62,11 @@ This graph shows Hillary Clinton's share of the Clinton and Trump national vote,
 
 $$\pi^{clinton}[t, US] = \sum_{s \in S} \omega_s \cdot \textrm{logit}^{-1} (\mu_a[t] + \mu_b[t, s])$$
 
-The thick line represents the median of posterior distribution of national vote intentions; the light blue area shows the 90% credible interval. The thin blue lines represent 100 draws from the posterior distribution.
+The thick line represents the median of posterior distribution of national vote intentions; the light blue area shows the 90% credible interval. The thin blue lines represent 100 draws from the posterior distribution. The fundamentals-based prior is shown with the dotted black line.
 
+<!--
 From today to November 8, Hillary Clinton's share of the national vote is predicted to shrink partially towards the fundamentals-based prior (shown with the dotted black line).
+-->
 
 Each national poll (raw numbers, unadjusted for pollster house effects) is represented as a dot (darker dots indicate narrower margins of error). On average, Hillary Clinton's national poll numbers seem to be running slightly below the level that would be consistent with the latent state-by-state vote intentions.
 
@@ -106,7 +108,7 @@ States are sorted by predicted Clinton score on election day.
 
 # Map
 
-```{r echo=FALSE, message=FALSE, fig.width = 8, fig.height = 4, fig.align='center'}
+```{r echo=FALSE, message=FALSE, fig.width = 9, fig.height = 4.5, fig.align='center'}
 <<map>>
 ```
 

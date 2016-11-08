@@ -106,8 +106,8 @@ df <- all_polls %>%
                ifelse(is.na(johnson), 0, johnson) + 
                ifelse(is.na(mcmullin), 0, mcmullin),
            sum = clinton + trump,
-           week = floor_date(t, unit = "week"),
-           day_of_week = as.integer(format(t, format = "%w")),
+           week = floor_date(t - days(2), unit = "week") + days(2), # weeks start on Tuesdays.
+           day_of_week = as.integer(t - week), # number of days since beginnning of the week
            # Trick to keep "likely voter" polls when multiple results are reported.
            polltype = as.integer(as.character(recode(vtype, "Likely Voters" = "0", 
                                                      "Registered Voters" = "1",
@@ -174,10 +174,13 @@ all_polled_states <- df$state %>% unique %>% sort
 election_day <- as.Date("2016-11-08")
 ndays <- max(df$t) - min(df$t)
 all_t <- min(df$t) + days(0:(ndays))
-all_weeks <- floor_date(all_t, unit = "week") %>% unique
-all_pollsters <- levels(as.factor(df$pollster))
-all_weeks_until_election <- min(all_weeks) + weeks(0:((election_day - min(all_weeks))/7 %>% floor))
 all_t_until_election <- min(all_t) + days(0:(election_day - min(all_t)))
+week_for_all_t <- floor_date(all_t - days(2), unit="week") + days(2)
+
+all_weeks <- (floor_date(all_t - days(2), unit = "week") + days(2)) %>% unique # weeks start on Tuesdays
+all_weeks_until_election <- (floor_date(all_t_until_election - days(2), unit = "week") + days(2)) %>% unique
+all_pollsters <- levels(as.factor(df$pollster))
+
 
 
 ###################################################################
@@ -281,8 +284,8 @@ out <- stan("state and national polls.stan",
                         sigma_mu_b_end = sigma_mu_b_end,
                         sigma_walk_b_forecast = sigma_walk_b_forecast,
                         sigma_poll_error = sigma_poll_error,
-                        week = as.integer(as.factor(floor_date(all_t, unit="week"))),
-                        day_of_week = as.numeric(format(all_t, format = "%w"))),
+                        week = as.integer(as.factor(week_for_all_t)),
+                        day_of_week = as.integer(all_t - week_for_all_t)),
             chains = 4, iter = 2000)
 
 stan_summary <- capture.output(print(out, pars = c("alpha", "sigma_c", 
@@ -312,9 +315,10 @@ poll_error <- rstan::extract(out, pars = "poll_error")[[1]]
 dates <- sort(c(all_t[all_t <= all_weeks[length(all_weeks)]], 
                 unique(setdiff(all_weeks_until_election + days(3), all_weeks + days(3)))))
 dates <- c(dates[-length(dates)], election_day)
-# dates = all dates until last Sunday; followed by:       # for mu_a daily + interpolated mu_b weekly components
-#         all Wednesdays until election day; followed by" # because mu_b weekly components are centered on Wednesdays
-#         election day (for convenience - should be Wednesday, but it shouldn't make much difference).
+# dates = all dates until last Tuesday; followed by:       # for mu_a daily + interpolated mu_b weekly components
+#         all Fridays until election day; followed by:     # because mu_b weekly components are centered on Fridays 
+# (weeks start on Tuesdays; the midpoint between 2 successive Tuesdays is Friday).
+#         election day.
 dimnames(p) <- list(1:nrow(p), as.character(dates), all_polled_states)
 dimnames(mu_a) <- list(1:nrow(mu_a), as.character(all_t))
 dimnames(mu_b) <- list(1:dim(mu_b)[1],

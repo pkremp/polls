@@ -80,6 +80,8 @@ plot_score <- function(state_abbr_vec, show_sim = FALSE, from = start_date){
                   aes(x = t, y = 100*p), color = "white", size = ifelse(length(state_abbr_vec) <= 2, 1, .8)) +
         geom_line(data = pred[pred$state %in% state_abbr_vec & pred$t <= max(all_t) & pred$t >= from,], 
                   aes(x = t, y = 100*p), color = "darkblue", size = ifelse(length(state_abbr_vec) <= 2, .8, .6)) +
+        geom_point(data = pred[pred$state %in% state_abbr_vec & pred$t == election_day,],
+                   aes(x = t, y = 100*p), size = 1/min(2, 2+length(state_abbr_vec))) +
         guides(color = FALSE, alpha = FALSE, linetype = FALSE) + 
         # scale_linetype_discrete(guide=FALSE) +
         facet_wrap(~ state_pos, ncol = ncolumns, labeller = as_labeller(state_labels, multi_line = TRUE)) +

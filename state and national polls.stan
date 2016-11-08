@@ -8,7 +8,7 @@ data{
     int last_poll_T;
     int s[N]; // State index
     int t[N]; // Day index
-    int w[N]; // Week index (weeks start on Sundays)
+    int w[N]; // Week index (weeks start on Tuesdays)
     int p[N]; // Pollster index
     int T_unique; // Number of (unique) days with at least one national poll
     int t_unique[N]; // = Which *unique national poll day index* does this poll correspond to?
@@ -31,13 +31,13 @@ transformed data{
     matrix [S-1, S-1] chol_sigma_mu_b_end;
     matrix [S-1, S-1] chol_sigma_poll_error;
     vector [S-1] zero_vec;
-    int last_sunday;
+    int last_tuesday;
     // Cholesky decompositions to speed up sampling from multivariate normal.
     chol_sigma_walk_b_forecast = cholesky_decompose(sigma_walk_b_forecast);
     chol_sigma_mu_b_end = cholesky_decompose(sigma_mu_b_end);
     chol_sigma_poll_error = cholesky_decompose(sigma_poll_error);
     for (state in 1:(S-1)) zero_vec[state] = 0;
-    last_sunday = last_poll_T-day_of_week[last_poll_T];
+    last_tuesday = last_poll_T-day_of_week[last_poll_T];
 }
 
 parameters{
@@ -67,11 +67,11 @@ transformed parameters{
     alpha = alpha_prior + alpha_01*0.2;
     poll_error = chol_sigma_poll_error * to_vector(poll_error_01);
     # Calculating mu_a: setting mu_a values to zero for the current week
-    for (i in last_sunday:last_poll_T)
+    for (i in last_tuesday:last_poll_T)
         mu_a[i] = 0;
     # Calculating mu_a: reverse random walk
-    for (i in 1:(last_sunday- 1))
-        mu_a[last_sunday-i] = mu_a[last_sunday-i+1] + sigma_walk_a_past * delta_a[last_sunday-i];
+    for (i in 1:(last_tuesday- 1))
+        mu_a[last_tuesday-i] = mu_a[last_tuesday-i+1] + sigma_walk_a_past * delta_a[last_tuesday-i];
     # Calculating mu_b (using the cholesky decompositions of covariance matrices)
     mu_b[W, 2:S] = to_row_vector(mu_b_prior[2:S] + chol_sigma_mu_b_end * to_vector(mu_b_end[2:S]));
     if (last_poll_W < W){
@@ -136,23 +136,23 @@ model{
 }
 
 generated quantities{
-    matrix[last_sunday + W - last_poll_W, S] predicted_score;
+    matrix[last_tuesday + W - last_poll_W, S] predicted_score;
     // Predicted scores have *daily* values for past dates (since they depend on mu_b AND mu_a parameters), 
     // but *weekly* values for future dates (since they only depend on mu_b).
     for (state in 2:S){
         // Backward estimates (daily)
-        for (date in 1:last_sunday){
+        for (date in 1:last_tuesday){
             // Linear interpolation of mu_b values between previous and current week, 
             // or current and next week
             // Using the following weights, depending on day_of_week:
             //         w-1    w       w+1
-            // 0 Sun   3/7    4/7  
-            // 1 Mon   2/7    5/7  
-            // 2 Tue   1/7    6/7  
-            // 3 Wed   0      7/7  
-            // 4 Thu          6/7    1/7 
-            // 5 Fri          5/7    2/7 
-            // 6 Sat          4/7    3/7 
+            // 0 Tue   3/7    4/7  
+            // 1 Wed   2/7    5/7  
+            // 2 Thu   1/7    6/7  
+            // 3 Fri   0      7/7  
+            // 4 Sat          6/7    1/7 
+            // 5 Sun          5/7    2/7 
+            // 6 Mon          4/7    3/7 
             if (day_of_week[date] <= 3){ // 0=Sun, 1=Mon, 2=Tue, 3=Wed
                 predicted_score[date, state] = 
                            inv_logit(mu_a[date] + (1.0-(4+day_of_week[date])/7.0)*mu_b[max(week[date]-1, 1), state]
@@ -168,10 +168,10 @@ generated quantities{
             //                                 +     (day_of_week[date]/7.0)*mu_b[min(week[date]+1, W), state]);
         }
         // Forward estimates (weekly)
-        for (date in (last_sunday+1):(last_sunday + W - last_poll_W))
-            predicted_score[date, state] = inv_logit(mu_b[last_poll_W + date - last_sunday, state]);
+        for (date in (last_tuesday+1):(last_tuesday + W - last_poll_W))
+            predicted_score[date, state] = inv_logit(mu_b[last_poll_W + date - last_tuesday, state]);
     }
-    for (date in 1:(last_sunday + W - last_poll_W))
+    for (date in 1:(last_tuesday + W - last_poll_W))
         // National score: averaging state scores by state weights.
         predicted_score[date, 1] = predicted_score[date, 2:S] * state_weights[2:S];
 }
