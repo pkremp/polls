@@ -44,12 +44,16 @@ draw_samples <- function(clinton_states = NULL, trump_states = NULL, states = NU
         colnames(proposals) <- all_states
         if (!is.null(clinton_states)) proposals[which(proposals[,clinton_states] < .5)] <- NA
         if (!is.null(  trump_states)) proposals[which(proposals[,  trump_states] > .5)] <- NA
-        if (!is.null(        states)) proposals[which(proposals[,        states] > upper_clinton | 
-                                                      proposals[,        states] < lower_clinton)] <- NA
+        if (!is.null(        states)){
+            for (s in states){
+                proposals[which(proposals[, s] > upper_clinton[s] | 
+                                proposals[, s] < lower_clinton[s])] <- NA
+            }
+        }
         reject <- apply(proposals, 1, function(x) any(is.na(x)))
         sim <- rbind(sim, proposals[!reject,])
         if (nrow(sim) < target_nsim & nrow(sim)/(nrow(proposals)*n) < 1-99/100){
-            print(paste("rmvnorm() is working hard... but more than 99.9% of the samples are rejected; trying with Stan instead.", sep = ""))
+            print(paste("rmvnorm() is working hard... but more than 99% of the samples are rejected; trying with Stan instead.", sep = ""))
             clinton_high <- rep(1, 56)
             clinton_low  <- rep(0, 56)
             names(clinton_high) <- all_states
@@ -73,7 +77,7 @@ draw_samples <- function(clinton_states = NULL, trump_states = NULL, states = NU
             break
         }
     }
-    return(sim)
+    return(sim[-1,])
 }
 
 update_prob <- function(clinton_states = NULL, trump_states = NULL, clinton_scores_list = NULL, target_nsim = 1000, show_all_states = FALSE, iter_stan = 2000){
